@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  KEY_COORDINATOR
+  SALES
+  ADMIN
+}
+
+enum TicketStatus {
+  NEW
+  CONTACTED
+  DOCS_PENDING
+  DOCS_RECEIVED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ON_HOLD
+}
+
+enum LeadSource {
+  WHATSAPP
+  TIKTOK
+  WALK_IN
+  REFERRAL
+  WEBSITE
+  WEBHOOK
+}
+
+enum DocumentType {
+  PASSPORT
+  PHOTO
+  BANK_STATEMENT
+  VISA_FORM
+  SUPPORTING_DOC
+  OTHER
+}
+
+enum PaymentType {
+  CONSULTATION_FEE
+  SERVICE_FEE
+  GOVERNMENT_FEE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum NotificationType {
+  MENTION
+  CASE_ASSIGNED
+  DOCUMENT_UPLOAD
+  STATUS_CHANGE
+  NEW_MESSAGE
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(SALES)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdTickets    Ticket[]           @relation("CreatedBy")
+  assignedTickets   Ticket[]           @relation("AssignedTo")
+  uploadedDocs      Document[]
+  recordedPayments  Payment[]
+  auditLogs         AuditLog[]
+  chatMemberships   ChatRoomMember[]
+  sentMessages      Message[]
+  mentionedIn       Mention[]          @relation("MentionedIn")
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  refNumber   String       @unique
+  clientName  String
+  clientEmail String?
+  clientPhone String
+  nationality String?
+  visaType    String?
+  destination String?
+  status      TicketStatus @default(NEW)
+  priority    Int          @default(0)
+  source      LeadSource   @default(WALK_IN)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  createdById  String
+  createdBy    User       @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?      @relation("AssignedTo", fields: [assignedToId], references: [id])
+  documents    Document[]
+  payments     Payment[]
+  auditLogs    AuditLog[]
+  chatRoom     ChatRoom?
+
+  @@index([status])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@map("tickets")
+}
+
+model Document {
+  id        String       @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  fileKey   String?
+  fileType  DocumentType @default(OTHER)
+  fileSize  Int?
+  mimeType  String?
+  createdAt DateTime     @default(now())
+
+  ticketId     String
+  ticket       Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+  @@map("documents")
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  amount    Float
+  currency  String        @default("GBP")
+  type      PaymentType   @default(SERVICE_FEE)
+  status    PaymentStatus @default(PENDING)
+  notes     String?
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  ticketId     String
+  ticket       Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  recordedById String
+  recordedBy   User   @relation(fields: [recordedById], references: [id])
+
+  @@index([ticketId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  oldValue  String?
+  newValue  String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ─── Chat System ─────────────────────────────────────────
+
+model ChatRoom {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ticketId String @unique
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  members  ChatRoomMember[]
+  messages Message[]
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  id         String   @id @default(cuid())
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
+
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([chatRoomId, userId])
+  @@index([userId])
+  @@map("chat_room_members")
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  content   String
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User     @relation(fields: [senderId], references: [id])
+
+  attachments Attachment[]
+  mentions    Mention[]
+
+  @@index([chatRoomId, createdAt])
+  @@map("messages")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  fileKey   String
+  fileSize  Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("attachments")
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  messageId   String
+  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mentionedId String
+  mentionedUser User @relation("MentionedIn", fields: [mentionedId], references: [id])
+
+  @@index([mentionedId])
+  @@map("mentions")
+}
+
+// ─── Notifications ───────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  metadata  String?
+  createdAt DateTime         @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model PushSubscription {
+  id       String   @id @default(cuid())
+  endpoint String   @unique
+  p256dh   String
+  auth     String
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}

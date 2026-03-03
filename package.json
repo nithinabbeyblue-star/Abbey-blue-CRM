@@ -1,0 +1,50 @@
+{
+  "name": "abbey-crm",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:generate": "pnpm exec prisma generate",
+    "db:migrate": "pnpm exec prisma migrate dev",
+    "db:push": "pnpm exec prisma db push",
+    "db:seed": "pnpm exec tsx prisma/seed.ts",
+    "db:studio": "pnpm exec prisma studio"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.999.0",
+    "@aws-sdk/s3-request-presigner": "^3.999.0",
+    "@prisma/adapter-pg": "^7.4.1",
+    "@prisma/client": "^7.4.1",
+    "bcryptjs": "^3.0.3",
+    "ioredis": "^5.9.3",
+    "iron-session": "^8.0.4",
+    "next": "16.1.6",
+    "pg": "^8.19.0",
+    "prisma": "^7.4.1",
+    "pusher": "^5.3.2",
+    "pusher-js": "^8.4.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "resend": "^6.9.2",
+    "web-push": "^3.6.7",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
