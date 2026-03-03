@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface AuditLog {
   id: string;
@@ -21,7 +23,7 @@ interface Ticket {
   clientEmail: string | null;
   clientPhone: string;
   nationality: string | null;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -33,17 +35,6 @@ interface Ticket {
   assignedTo: { id: string; name: string; email: string } | null;
   auditLogs: AuditLog[];
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 const PRIORITY_LABELS: Record<number, string> = {
   0: "Normal",
@@ -127,13 +118,7 @@ export default function TicketDetailPage() {
             })}
           </p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-            STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-          }`}
-        >
-          {ticket.status.replace(/_/g, " ")}
-        </span>
+        <StatusBadge status={ticket.status} size="sm" />
       </div>
 
       {/* Client Info Card */}
@@ -173,13 +158,14 @@ export default function TicketDetailPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-            Visa Details
+            Case Details
           </h2>
           <dl className="space-y-3">
             <div>
-              <dt className="text-xs font-medium text-muted">Visa Type</dt>
+              <dt className="text-xs font-medium text-muted">Case Type</dt>
               <dd className="mt-1 text-sm text-foreground">
-                {ticket.visaType || "—"}
+                <CaseBadge caseType={ticket.caseType} />
+                {!ticket.caseType && "—"}
               </dd>
             </div>
             <div>

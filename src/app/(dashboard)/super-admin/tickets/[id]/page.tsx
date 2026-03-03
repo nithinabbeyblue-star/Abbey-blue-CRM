@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { DocumentSection } from "@/components/documents/document-section";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { StatusBadge, ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface AuditLog {
   id: string;
@@ -22,7 +24,7 @@ interface Ticket {
   clientEmail: string | null;
   clientPhone: string;
   nationality: string | null;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -40,19 +42,6 @@ interface AdminUser {
   name: string;
   email: string;
 }
-
-const STATUSES = ["NEW", "CONTACTED", "DOCS_PENDING", "DOCS_RECEIVED", "SUBMITTED", "APPROVED", "REJECTED", "ON_HOLD"];
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 export default function SuperAdminTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -96,7 +85,7 @@ export default function SuperAdminTicketDetailPage() {
       body: JSON.stringify({ status: newStatus }),
     });
     if (res.ok) {
-      setMessage({ text: `Status updated to ${newStatus.replace(/_/g, " ")}`, type: "success" });
+      setMessage({ text: `Status updated to ${getStatusLabel(newStatus)}`, type: "success" });
       await fetchTicket();
     } else {
       const data = await res.json();
@@ -142,9 +131,7 @@ export default function SuperAdminTicketDetailPage() {
             {new Date(ticket.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1.5 text-sm font-medium ${STATUS_COLORS[ticket.status]}`}>
-          {ticket.status.replace(/_/g, " ")}
-        </span>
+        <StatusBadge status={ticket.status} size="sm" />
       </div>
 
       {message.text && (
@@ -163,7 +150,7 @@ export default function SuperAdminTicketDetailPage() {
               <div><dt className="text-xs font-medium text-muted">Phone</dt><dd className="mt-1">{ticket.clientPhone}</dd></div>
               <div><dt className="text-xs font-medium text-muted">Email</dt><dd className="mt-1">{ticket.clientEmail || "—"}</dd></div>
               <div><dt className="text-xs font-medium text-muted">Nationality</dt><dd className="mt-1">{ticket.nationality || "—"}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Visa Type</dt><dd className="mt-1">{ticket.visaType || "—"}</dd></div>
+              <div><dt className="text-xs font-medium text-muted">Case Type</dt><dd className="mt-1"><CaseBadge caseType={ticket.caseType} />{!ticket.caseType && "—"}</dd></div>
               <div><dt className="text-xs font-medium text-muted">Destination</dt><dd className="mt-1">{ticket.destination || "—"}</dd></div>
             </dl>
           </div>
@@ -177,7 +164,7 @@ export default function SuperAdminTicketDetailPage() {
           )}
 
           {/* Documents */}
-          <DocumentSection ticketId={id} />
+          <DocumentSection ticketId={id} caseType={ticket.caseType} />
 
           {/* Audit Log */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -232,7 +219,7 @@ export default function SuperAdminTicketDetailPage() {
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Update Status</h2>
             <div className="space-y-2">
-              {STATUSES.map((s) => (
+              {ORDERED_STATUSES.map((s) => (
                 <button
                   key={s}
                   onClick={() => handleStatusChange(s)}
@@ -243,7 +230,7 @@ export default function SuperAdminTicketDetailPage() {
                       : "border border-border text-foreground hover:bg-gray-50 disabled:opacity-50"
                   }`}
                 >
-                  {s.replace(/_/g, " ")}{s === ticket.status && " (Current)"}
+                  {getStatusLabel(s)}{s === ticket.status && " (Current)"}
                 </button>
               ))}
             </div>

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CaseDropdown } from "@/components/ui/case-dropdown";
+import type { CaseTypeKey } from "@/constants/cases";
 
 const SOURCES = [
   { value: "WHATSAPP", label: "WhatsApp" },
@@ -21,6 +23,7 @@ export default function NewTicketPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [caseType, setCaseType] = useState<CaseTypeKey | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,7 +36,7 @@ export default function NewTicketPage() {
       clientEmail: formData.get("clientEmail") as string,
       clientPhone: formData.get("clientPhone") as string,
       nationality: formData.get("nationality") as string,
-      visaType: formData.get("visaType") as string,
+      caseType: caseType,
       destination: formData.get("destination") as string,
       source: formData.get("source") as string,
       priority: parseInt(formData.get("priority") as string, 10),
@@ -129,21 +132,17 @@ export default function NewTicketPage() {
           </div>
         </div>
 
-        {/* Visa Details */}
+        {/* Case Details */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-            Visa Details
+            Case Details
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Visa Type
+                Case Type
               </label>
-              <input
-                name="visaType"
-                placeholder="e.g. Tourist, Work, Student"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
+              <CaseDropdown value={caseType} onChange={setCaseType} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -151,7 +150,7 @@ export default function NewTicketPage() {
               </label>
               <input
                 name="destination"
-                placeholder="e.g. United Kingdom"
+                placeholder="e.g. Ireland"
                 className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>

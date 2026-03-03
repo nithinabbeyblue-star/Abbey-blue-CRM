@@ -2,17 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Role } from "@/generated/prisma/enums";
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
+import { STATUS_CONFIG } from "@/components/ui/status-badge";
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser();
@@ -23,12 +13,12 @@ export default async function AdminDashboard() {
   // Key Coordinator sees all tickets, Admin sees only assigned
   const where = isCoordinator ? {} : { assignedToId: user.userId };
 
-  const [total, unassigned, docsPending, submitted, approved, recentTickets] =
+  const [total, unassigned, docCollection, submitted, approved, recentTickets] =
     await Promise.all([
       db.ticket.count({ where }),
       db.ticket.count({ where: { assignedToId: null } }),
       db.ticket.count({
-        where: { ...where, status: "DOCS_PENDING" },
+        where: { ...where, status: "DOC_COLLECTION" },
       }),
       db.ticket.count({ where: { ...where, status: "SUBMITTED" } }),
       db.ticket.count({ where: { ...where, status: "APPROVED" } }),
@@ -47,12 +37,12 @@ export default async function AdminDashboard() {
     ? [
         { label: "Total Tickets", value: total, color: "bg-blue-500" },
         { label: "Unassigned", value: unassigned, color: "bg-red-500" },
-        { label: "Docs Pending", value: docsPending, color: "bg-yellow-500" },
+        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
         { label: "Approved", value: approved, color: "bg-emerald-500" },
       ]
     : [
         { label: "Assigned to Me", value: total, color: "bg-blue-500" },
-        { label: "Docs Pending", value: docsPending, color: "bg-yellow-500" },
+        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
         { label: "Submitted", value: submitted, color: "bg-purple-500" },
         { label: "Approved", value: approved, color: "bg-emerald-500" },
       ];
@@ -151,10 +141,10 @@ export default async function AdminDashboard() {
                   <td className="px-6 py-3">
                     <span
                       className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                        STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-                      }`}
+                        STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
+                      } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
                     >
-                      {ticket.status.replace(/_/g, " ")}
+                      {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-muted">

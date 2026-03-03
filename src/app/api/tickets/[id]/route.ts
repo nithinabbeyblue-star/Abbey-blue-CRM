@@ -7,11 +7,10 @@ import { sendPushToUser } from "@/lib/push";
 import { triggerEvent, userChannel } from "@/lib/pusher";
 
 const VALID_STATUSES = [
-  "NEW",
-  "CONTACTED",
-  "DOCS_PENDING",
-  "DOCS_RECEIVED",
+  "LEAD",
+  "DOC_COLLECTION",
   "SUBMITTED",
+  "IN_PROGRESS",
   "APPROVED",
   "REJECTED",
   "ON_HOLD",

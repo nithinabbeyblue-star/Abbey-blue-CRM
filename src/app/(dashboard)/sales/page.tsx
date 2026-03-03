@@ -1,17 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
+import { STATUS_CONFIG } from "@/components/ui/status-badge";
 
 export default async function SalesDashboard() {
   const user = await getCurrentUser();
@@ -22,12 +12,12 @@ export default async function SalesDashboard() {
   const [total, newCount, inProgress, approved, recentTickets] =
     await Promise.all([
       db.ticket.count({ where }),
-      db.ticket.count({ where: { ...where, status: "NEW" } }),
+      db.ticket.count({ where: { ...where, status: "LEAD" } }),
       db.ticket.count({
         where: {
           ...where,
           status: {
-            in: ["CONTACTED", "DOCS_PENDING", "DOCS_RECEIVED", "SUBMITTED"],
+            in: ["DOC_COLLECTION", "SUBMITTED", "IN_PROGRESS"],
           },
         },
       }),
@@ -157,11 +147,10 @@ export default async function SalesDashboard() {
                   <td className="px-6 py-3">
                     <span
                       className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                        STATUS_COLORS[ticket.status] ||
-                        "bg-gray-100 text-gray-700"
-                      }`}
+                        STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
+                      } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
                     >
-                      {ticket.status.replace(/_/g, " ")}
+                      {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-muted">

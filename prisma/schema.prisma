@@ -17,14 +17,41 @@ enum Role {
 }
 
 enum TicketStatus {
-  NEW
-  CONTACTED
-  DOCS_PENDING
-  DOCS_RECEIVED
+  LEAD
+  DOC_COLLECTION
   SUBMITTED
+  IN_PROGRESS
   APPROVED
   REJECTED
   ON_HOLD
+}
+
+enum CaseType {
+  CSEP
+  GWEP
+  ICT
+  DEPT_EP
+  REACTIVATION_EP
+  ATYPICAL
+  STAMP_1
+  STAMP_1G
+  STAMP_2
+  STAMP_3
+  STAMP_4
+  STAMP_4_EUFAM
+  STAMP_5
+  STAMP_6
+  SHORT_STAY_C_VISIT
+  SHORT_STAY_C_BUSINESS
+  CONFERENCE_EVENT
+  JOIN_FAMILY_D
+  DE_FACTO_PARTNER
+  PERMISSION_TO_REMAIN
+  IRP_REGISTRATION
+  LONG_TERM_RESIDENCY
+  NATURALISATION
+  CITIZENSHIP_DESCENT
+  FOREIGN_BIRTH_REGISTRATION
 }
 
 enum LeadSource {
@@ -99,9 +126,9 @@ model Ticket {
   clientEmail String?
   clientPhone String
   nationality String?
-  visaType    String?
+  caseType    CaseType?
   destination String?
-  status      TicketStatus @default(NEW)
+  status      TicketStatus @default(LEAD)
   priority    Int          @default(0)
   source      LeadSource   @default(WALK_IN)
   notes       String?

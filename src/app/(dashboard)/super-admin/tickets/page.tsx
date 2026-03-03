@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { StatusBadge, ORDERED_STATUSES } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface Ticket {
   id: string;
   refNumber: string;
   clientName: string;
   clientPhone: string;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -17,17 +19,6 @@ interface Ticket {
   createdBy: { id: string; name: string };
   assignedTo: { id: string; name: string } | null;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 export default function SuperAdminTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -46,7 +37,7 @@ export default function SuperAdminTicketsPage() {
     fetchTickets();
   }, [filter]);
 
-  const statuses = ["", "NEW", "CONTACTED", "DOCS_PENDING", "DOCS_RECEIVED", "SUBMITTED", "APPROVED", "REJECTED", "ON_HOLD"];
+  const statuses = ["", ...ORDERED_STATUSES];
 
   return (
     <div>
@@ -80,7 +71,7 @@ export default function SuperAdminTicketsPage() {
               <tr className="border-b border-border bg-gray-50/50">
                 <th className="px-4 py-3 text-left font-medium text-muted">Ref</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Client</th>
-                <th className="px-4 py-3 text-left font-medium text-muted">Visa / Dest</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Case Type</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Source</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Created By</th>
@@ -100,13 +91,15 @@ export default function SuperAdminTicketsPage() {
                     <div className="font-medium text-foreground">{t.clientName}</div>
                     <div className="text-xs text-muted">{t.clientPhone}</div>
                   </td>
-                  <td className="px-4 py-3 text-muted">
-                    {t.visaType || "—"}{t.destination && ` / ${t.destination}`}
+                  <td className="px-4 py-3">
+                    <CaseBadge caseType={t.caseType} />
+                    {t.destination && (
+                      <p className="mt-0.5 text-xs text-muted">{t.destination}</p>
+                    )}
+                    {!t.caseType && !t.destination && <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[t.status] || "bg-gray-100 text-gray-700"}`}>
-                      {t.status.replace(/_/g, " ")}
-                    </span>
+                    <StatusBadge status={t.status} />
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">{t.source.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-muted">{t.createdBy?.name}</td>

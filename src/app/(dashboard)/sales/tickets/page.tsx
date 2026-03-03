@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { StatusBadge, ORDERED_STATUSES } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface Ticket {
   id: string;
   refNumber: string;
   clientName: string;
   clientPhone: string;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -16,17 +18,6 @@ interface Ticket {
   createdAt: string;
   assignedTo: { id: string; name: string } | null;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: "Normal", color: "text-muted" },
@@ -51,17 +42,7 @@ export default function MyTicketsPage() {
     fetchTickets();
   }, [filter]);
 
-  const statuses = [
-    "",
-    "NEW",
-    "CONTACTED",
-    "DOCS_PENDING",
-    "DOCS_RECEIVED",
-    "SUBMITTED",
-    "APPROVED",
-    "REJECTED",
-    "ON_HOLD",
-  ];
+  const statuses = ["", ...ORDERED_STATUSES];
 
   return (
     <div>
@@ -124,7 +105,7 @@ export default function MyTicketsPage() {
                   Client
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted">
-                  Visa / Destination
+                  Case Type
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted">
                   Status
@@ -162,18 +143,15 @@ export default function MyTicketsPage() {
                       {ticket.clientPhone}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted">
-                    {ticket.visaType || "—"}
-                    {ticket.destination && ` / ${ticket.destination}`}
+                  <td className="px-4 py-3">
+                    <CaseBadge caseType={ticket.caseType} />
+                    {ticket.destination && (
+                      <p className="mt-0.5 text-xs text-muted">{ticket.destination}</p>
+                    )}
+                    {!ticket.caseType && !ticket.destination && <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                        STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {ticket.status.replace(/_/g, " ")}
-                    </span>
+                    <StatusBadge status={ticket.status} />
                   </td>
                   <td className="px-4 py-3">
                     <span

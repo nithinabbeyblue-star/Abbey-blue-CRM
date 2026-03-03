@@ -4,14 +4,15 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { generateRefNumber } from "@/lib/ticket-utils";
 import { notifyKeyCoordinator } from "@/lib/mail";
-import { Role } from "@/generated/prisma/enums";
+import { Role, CaseType } from "@/generated/prisma/enums";
+import type { CaseTypeKey } from "@/constants/cases";
 
 const createTicketSchema = z.object({
   clientName: z.string().min(1, "Client name is required"),
   clientEmail: z.string().email().optional().or(z.literal("")),
   clientPhone: z.string().min(1, "Phone number is required"),
   nationality: z.string().optional().or(z.literal("")),
-  visaType: z.string().optional().or(z.literal("")),
+  caseType: z.nativeEnum(CaseType).optional().nullable(),
   destination: z.string().optional().or(z.literal("")),
   source: z.enum([
     "WHATSAPP",
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = createTicketSchema.parse(body);
-    const refNumber = await generateRefNumber();
+    const refNumber = await generateRefNumber((data.caseType as CaseTypeKey) ?? null);
 
     const ticket = await db.ticket.create({
       data: {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
         clientEmail: data.clientEmail || null,
         clientPhone: data.clientPhone,
         nationality: data.nationality || null,
-        visaType: data.visaType || null,
+        caseType: data.caseType || null,
         destination: data.destination || null,
         source: data.source,
         priority: data.priority ?? 0,
@@ -57,8 +58,8 @@ export async function POST(request: NextRequest) {
         ticketId: ticket.id,
         userId: user.userId,
         action: "TICKET_CREATED",
-        newValue: "NEW",
-        metadata: JSON.stringify({ source: data.source }),
+        newValue: "LEAD",
+        metadata: JSON.stringify({ source: data.source, caseType: data.caseType }),
       },
     });
 
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       refNumber: ticket.refNumber,
       clientName: ticket.clientName,
       clientPhone: ticket.clientPhone,
-      visaType: ticket.visaType,
+      caseType: ticket.caseType,
       destination: ticket.destination,
       source: ticket.source,
       createdByName: user.name,

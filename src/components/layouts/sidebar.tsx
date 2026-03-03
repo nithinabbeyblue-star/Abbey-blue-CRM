@@ -34,11 +34,10 @@ function getTicketPath(role: string, ticketId: string): string {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  NEW: "bg-blue-400",
-  CONTACTED: "bg-indigo-400",
-  DOCS_PENDING: "bg-yellow-400",
-  DOCS_RECEIVED: "bg-orange-400",
+  LEAD: "bg-blue-400",
+  DOC_COLLECTION: "bg-yellow-400",
   SUBMITTED: "bg-purple-400",
+  IN_PROGRESS: "bg-orange-400",
   APPROVED: "bg-green-400",
   REJECTED: "bg-red-400",
   ON_HOLD: "bg-gray-400",

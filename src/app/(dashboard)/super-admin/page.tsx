@@ -1,17 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
+import { STATUS_CONFIG, ORDERED_STATUSES } from "@/components/ui/status-badge";
 
 export default async function SuperAdminDashboard() {
   const user = await getCurrentUser();
@@ -124,7 +114,7 @@ export default async function SuperAdminDashboard() {
             <p className="py-8 text-center text-sm text-muted">No tickets yet.</p>
           ) : (
             <div className="space-y-3">
-              {["NEW", "CONTACTED", "DOCS_PENDING", "DOCS_RECEIVED", "SUBMITTED", "APPROVED", "REJECTED", "ON_HOLD"].map(
+              {ORDERED_STATUSES.map(
                 (status) => {
                   const count = statusMap[status] || 0;
                   if (count === 0) return null;
@@ -133,10 +123,10 @@ export default async function SuperAdminDashboard() {
                     <div key={status} className="flex items-center gap-3">
                       <span
                         className={`inline-block w-28 rounded-full px-2.5 py-1 text-center text-xs font-medium ${
-                          STATUS_COLORS[status]
-                        }`}
+                          STATUS_CONFIG[status]?.bg ?? "bg-gray-100"
+                        } ${STATUS_CONFIG[status]?.text ?? "text-gray-700"}`}
                       >
-                        {status.replace(/_/g, " ")}
+                        {STATUS_CONFIG[status]?.label ?? status.replace(/_/g, " ")}
                       </span>
                       <div className="flex-1">
                         <div className="h-2 rounded-full bg-gray-100">

@@ -1,30 +1,27 @@
+import { CASE_CONFIG, type CaseTypeKey } from "@/constants/cases";
 import { db } from "./db";
 
 /**
  * Generates a unique ticket reference number.
- * Format: ABY-YYYYMMDD-XXXX (e.g., ABY-20260227-0012)
+ * Format: ABBEY-{CODE}-{YEAR}-{SEQ} (e.g., ABBEY-CSEP-2026-001)
  */
-export async function generateRefNumber(): Promise<string> {
-  const today = new Date();
-  const dateStr =
-    today.getFullYear().toString() +
-    (today.getMonth() + 1).toString().padStart(2, "0") +
-    today.getDate().toString().padStart(2, "0");
+export async function generateRefNumber(caseType?: CaseTypeKey | null): Promise<string> {
+  const year = new Date().getFullYear().toString();
+  const code = caseType ? CASE_CONFIG[caseType].shortCode : "MISC";
+  const prefix = `ABBEY-${code}-${year}-`;
 
-  const prefix = `ABY-${dateStr}-`;
-
-  // Find the latest ticket with today's prefix
   const latest = await db.ticket.findFirst({
     where: { refNumber: { startsWith: prefix } },
     orderBy: { refNumber: "desc" },
     select: { refNumber: true },
   });
 
-  let nextNum = 1;
+  let nextSeq = 1;
   if (latest) {
-    const lastNum = parseInt(latest.refNumber.split("-").pop() || "0", 10);
-    nextNum = lastNum + 1;
+    const parts = latest.refNumber.split("-");
+    const lastNum = parseInt(parts[parts.length - 1] || "0", 10);
+    nextSeq = lastNum + 1;
   }
 
-  return `${prefix}${nextNum.toString().padStart(4, "0")}`;
+  return `${prefix}${nextSeq.toString().padStart(3, "0")}`;
 }

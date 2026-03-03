@@ -28,7 +28,7 @@ export async function notifyKeyCoordinator(ticket: {
   refNumber: string;
   clientName: string;
   clientPhone: string;
-  visaType?: string | null;
+  caseType?: string | null;
   destination?: string | null;
   source: string;
   createdByName: string;
@@ -48,7 +48,7 @@ export async function notifyKeyCoordinator(ticket: {
         <tr><td style="padding:4px 12px;font-weight:bold;">Ref</td><td>${ticket.refNumber}</td></tr>
         <tr><td style="padding:4px 12px;font-weight:bold;">Client</td><td>${ticket.clientName}</td></tr>
         <tr><td style="padding:4px 12px;font-weight:bold;">Phone</td><td>${ticket.clientPhone}</td></tr>
-        <tr><td style="padding:4px 12px;font-weight:bold;">Visa Type</td><td>${ticket.visaType || "N/A"}</td></tr>
+        <tr><td style="padding:4px 12px;font-weight:bold;">Case Type</td><td>${ticket.caseType || "N/A"}</td></tr>
         <tr><td style="padding:4px 12px;font-weight:bold;">Destination</td><td>${ticket.destination || "N/A"}</td></tr>
         <tr><td style="padding:4px 12px;font-weight:bold;">Source</td><td>${ticket.source}</td></tr>
         <tr><td style="padding:4px 12px;font-weight:bold;">Created By</td><td>${ticket.createdByName}</td></tr>

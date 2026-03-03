@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { STATUS_CONFIG } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface Ticket {
   id: string;
   refNumber: string;
   clientName: string;
   clientPhone: string;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -22,17 +24,6 @@ interface AdminUser {
   name: string;
   email: string;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 const PRIORITY_BADGE: Record<number, string> = {
   0: "",
@@ -167,17 +158,19 @@ export default function AssignmentsPage() {
                       <span className="text-sm font-bold text-primary">{ticket.refNumber}</span>
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-                        }`}
+                          STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
+                        } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
                       >
-                        {ticket.status.replace(/_/g, " ")}
+                        {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
                       </span>
                     </div>
                     <p className="mt-1 text-sm font-medium text-foreground">
                       {ticket.clientName} &mdash; {ticket.clientPhone}
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
-                      {ticket.visaType || "No visa type"} {ticket.destination && `/ ${ticket.destination}`}
+                      <CaseBadge caseType={ticket.caseType} />
+                      {!ticket.caseType && "No case type"}
+                      {ticket.destination && ` / ${ticket.destination}`}
                       {" "}&bull;{" "}Source: {ticket.source.replace(/_/g, " ")}
                       {" "}&bull;{" "}By: {ticket.createdBy.name}
                     </p>
@@ -244,10 +237,10 @@ export default function AssignmentsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-                        }`}
+                          STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
+                        } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
                       >
-                        {ticket.status.replace(/_/g, " ")}
+                        {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-foreground">{ticket.assignedTo?.name}</td>

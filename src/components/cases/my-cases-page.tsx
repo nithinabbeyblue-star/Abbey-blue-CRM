@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { StatusBadge, STATUS_CONFIG } from "@/components/ui/status-badge";
 
 interface Ticket {
   id: string;
@@ -21,17 +22,6 @@ interface StatusCount {
   status: string;
   count: number;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: "Normal", color: "text-muted" },
@@ -127,10 +117,10 @@ export function MyCasesPage({
             className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               statusFilter === sc.status
                 ? "bg-primary text-white"
-                : `${STATUS_COLORS[sc.status] || "bg-gray-100 text-gray-600"} hover:opacity-80`
+                : `${STATUS_CONFIG[sc.status]?.bg ?? "bg-gray-100"} ${STATUS_CONFIG[sc.status]?.text ?? "text-gray-600"} hover:opacity-80`
             }`}
           >
-            {sc.status.replace(/_/g, " ")} ({sc.count})
+            {STATUS_CONFIG[sc.status]?.label ?? sc.status.replace(/_/g, " ")} ({sc.count})
           </button>
         ))}
       </div>
@@ -176,13 +166,7 @@ export function MyCasesPage({
                       <div className="text-xs text-muted">{ticket.clientPhone}</div>
                     </td>
                     <td className="px-5 py-3">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                          STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {ticket.status.replace(/_/g, " ")}
-                      </span>
+                      <StatusBadge status={ticket.status} />
                     </td>
                     <td className="px-5 py-3">
                       <span className={`text-xs ${pri.color}`}>{pri.label}</span>

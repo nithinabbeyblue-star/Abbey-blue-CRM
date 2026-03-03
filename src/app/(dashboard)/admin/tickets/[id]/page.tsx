@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { DocumentSection } from "@/components/documents/document-section";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { StatusBadge, ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
+import { CaseBadge } from "@/components/ui/case-badge";
 
 interface AuditLog {
   id: string;
@@ -22,7 +24,7 @@ interface Ticket {
   clientEmail: string | null;
   clientPhone: string;
   nationality: string | null;
-  visaType: string | null;
+  caseType: string | null;
   destination: string | null;
   status: string;
   source: string;
@@ -34,28 +36,6 @@ interface Ticket {
   assignedTo: { id: string; name: string; email: string } | null;
   auditLogs: AuditLog[];
 }
-
-const STATUSES = [
-  "NEW",
-  "CONTACTED",
-  "DOCS_PENDING",
-  "DOCS_RECEIVED",
-  "SUBMITTED",
-  "APPROVED",
-  "REJECTED",
-  "ON_HOLD",
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-700",
-  CONTACTED: "bg-indigo-100 text-indigo-700",
-  DOCS_PENDING: "bg-yellow-100 text-yellow-700",
-  DOCS_RECEIVED: "bg-orange-100 text-orange-700",
-  SUBMITTED: "bg-purple-100 text-purple-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-gray-100 text-gray-700",
-};
 
 export default function AdminTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -101,7 +81,7 @@ export default function AdminTicketDetailPage() {
     });
 
     if (res.ok) {
-      setMessage({ text: `Status updated to ${newStatus.replace(/_/g, " ")}`, type: "success" });
+      setMessage({ text: `Status updated to ${getStatusLabel(newStatus)}`, type: "success" });
       await fetchTicket();
     } else {
       const data = await res.json();
@@ -162,13 +142,7 @@ export default function AdminTicketDetailPage() {
             })}
           </p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-            STATUS_COLORS[ticket.status] || "bg-gray-100 text-gray-700"
-          }`}
-        >
-          {ticket.status.replace(/_/g, " ")}
-        </span>
+        <StatusBadge status={ticket.status} size="sm" />
       </div>
 
       {/* Message */}
@@ -212,15 +186,18 @@ export default function AdminTicketDetailPage() {
             </dl>
           </div>
 
-          {/* Visa Details */}
+          {/* Case Details */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-              Visa Details
+              Case Details
             </h2>
             <dl className="grid grid-cols-2 gap-4">
               <div>
-                <dt className="text-xs font-medium text-muted">Visa Type</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.visaType || "—"}</dd>
+                <dt className="text-xs font-medium text-muted">Case Type</dt>
+                <dd className="mt-1 text-sm text-foreground">
+                  <CaseBadge caseType={ticket.caseType} />
+                  {!ticket.caseType && "—"}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-muted">Destination</dt>
@@ -259,7 +236,7 @@ export default function AdminTicketDetailPage() {
           </div>
 
           {/* Documents */}
-          <DocumentSection ticketId={id} />
+          <DocumentSection ticketId={id} caseType={ticket.caseType} />
 
           {/* Audit Log */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -311,7 +288,7 @@ export default function AdminTicketDetailPage() {
               Update Status
             </h2>
             <div className="space-y-2">
-              {STATUSES.map((s) => (
+              {ORDERED_STATUSES.map((s) => (
                 <button
                   key={s}
                   onClick={() => handleStatusChange(s)}
@@ -322,7 +299,7 @@ export default function AdminTicketDetailPage() {
                       : "border border-border text-foreground hover:bg-gray-50 disabled:opacity-50"
                   }`}
                 >
-                  {s.replace(/_/g, " ")}
+                  {getStatusLabel(s)}
                   {s === ticket.status && " (Current)"}
                 </button>
               ))}
