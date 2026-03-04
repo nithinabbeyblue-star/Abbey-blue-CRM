@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DocumentSection } from "@/components/documents/document-section";
 import { ChatPanel } from "@/components/chat/chat-panel";
@@ -48,6 +48,7 @@ interface Ticket {
 
 export default function AdminTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -189,6 +190,7 @@ export default function AdminTicketDetailPage() {
             canEditFees={false}
             canEditPaidAmount={true}
             canEditDeadline={true}
+            canManagePayments={true}
           />
 
           {/* Notes */}
@@ -287,6 +289,34 @@ export default function AdminTicketDetailPage() {
           {currentUserId && (
             <ChatPanel ticketId={id} currentUserId={currentUserId} />
           )}
+
+          {/* Delete Ticket */}
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">
+              Danger Zone
+            </h2>
+            <p className="mb-3 text-xs text-red-600">
+              Permanently delete this ticket and all associated data (documents, chat, audit logs).
+            </p>
+            <button
+              onClick={async () => {
+                if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
+                setUpdating(true);
+                const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                  router.push("/admin/tickets");
+                } else {
+                  const data = await res.json();
+                  setMessage({ text: data.error || "Failed to delete", type: "error" });
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              Delete Ticket
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -190,6 +190,7 @@ export default function SuperAdminTicketDetailPage() {
             canEditFees={true}
             canEditPaidAmount={true}
             canEditDeadline={true}
+            canManagePayments={true}
           />
 
           {/* Notes */}

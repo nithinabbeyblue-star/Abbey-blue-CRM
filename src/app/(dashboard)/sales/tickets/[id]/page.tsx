@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { CaseHeader } from "@/components/tickets/case-header";
@@ -46,10 +46,12 @@ interface Ticket {
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTicket = useCallback(async () => {
     const [ticketRes, meRes] = await Promise.all([
@@ -160,6 +162,34 @@ export default function TicketDetailPage() {
           <ChatPanel ticketId={id} currentUserId={currentUserId} />
         </div>
       )}
+
+      {/* Delete Ticket */}
+      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">
+          Danger Zone
+        </h2>
+        <p className="mb-3 text-xs text-red-600">
+          Permanently delete this ticket and all associated data (documents, chat, audit logs).
+        </p>
+        <button
+          onClick={async () => {
+            if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
+            setDeleting(true);
+            const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+            if (res.ok) {
+              router.push("/sales/tickets");
+            } else {
+              const data = await res.json();
+              alert(data.error || "Failed to delete");
+              setDeleting(false);
+            }
+          }}
+          disabled={deleting}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+        >
+          {deleting ? "Deleting..." : "Delete Ticket"}
+        </button>
+      </div>
 
       {/* Audit Log / Case History */}
       <div className="mt-4 rounded-xl border border-border bg-card p-6 shadow-sm">

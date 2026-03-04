@@ -6,6 +6,7 @@ import { Role, CaseType } from "@/generated/prisma/enums";
 import { sendPushToUser } from "@/lib/push";
 import { triggerEvent, userChannel } from "@/lib/pusher";
 import { invalidateCache } from "@/lib/redis";
+import { createAuditLog } from "@/lib/audit";
 
 const VALID_STATUSES = [
   "LEAD",
@@ -292,12 +293,12 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/tickets/[id] — Delete ticket (Super Admin + Key Coordinator only)
+// DELETE /api/tickets/[id] — Delete ticket (all roles, audit-logged)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -306,6 +307,25 @@ export async function DELETE(
   if (!ticket) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
+
+  // Log BEFORE delete (cascade will remove ticket-linked audit logs).
+  // Store without ticketId so the record survives the cascade.
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined;
+  const ua = request.headers.get("user-agent") || undefined;
+  await createAuditLog({
+    action: "TICKET_DELETED",
+    userId: user.userId,
+    oldValue: ticket.refNumber,
+    metadata: JSON.stringify({
+      refNumber: ticket.refNumber,
+      clientName: ticket.clientName,
+      clientPhone: ticket.clientPhone,
+      caseType: ticket.caseType,
+      status: ticket.status,
+    }),
+    ipAddress: ip,
+    userAgent: ua,
+  });
 
   // All related records cascade-delete via onDelete: Cascade in schema
   await db.ticket.delete({ where: { id } });
