@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 const routeRoleEntries: [string, Role[]][] = [
   ["/api/users/admins", [Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN]],
   ["/api/users", [Role.SUPER_ADMIN]],
+  ["/api/analytics/audit-logs", [Role.SUPER_ADMIN]],
   ["/api/analytics", [Role.SUPER_ADMIN]],
   ["/sales", [Role.SALES, Role.SUPER_ADMIN]],
   ["/admin", [Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN]],

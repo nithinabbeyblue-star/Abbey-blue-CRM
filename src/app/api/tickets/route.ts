@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Members: the sales person + all Key Coordinators + all Super Admins
     const coordinatorsAndAdmins = await db.user.findMany({
       where: {
-        isActive: true,
+        status: "ACTIVE",
         role: { in: [Role.KEY_COORDINATOR, Role.SUPER_ADMIN] },
       },
       select: { id: true },

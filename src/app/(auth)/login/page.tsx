@@ -1,43 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await res.json();
+      if (result?.error) {
+        const errMsg = result.error;
 
-      if (!res.ok) {
-        setError(data.error || "Login failed");
+        if (errMsg.includes("PENDING_ACTIVATION")) {
+          router.push(`/activate?email=${encodeURIComponent(email)}`);
+          return;
+        }
+        if (errMsg.includes("PENDING_APPROVAL")) {
+          setInfo("Your password has been set. Please wait for your administrator to grant access.");
+          return;
+        }
+        if (errMsg.includes("ACCOUNT_SUSPENDED")) {
+          setError("Your account has been deactivated. Contact your administrator.");
+          return;
+        }
+
+        setError("Invalid email or password");
         return;
       }
 
-      // Redirect based on role
-      const roleRedirects: Record<string, string> = {
-        SUPER_ADMIN: "/super-admin",
-        KEY_COORDINATOR: "/admin",
-        ADMIN: "/admin",
-        SALES: "/sales",
-      };
-
-      router.push(roleRedirects[data.user.role] || "/");
+      // Success — redirect to callback URL or role dashboard
+      const callbackUrl = searchParams.get("callbackUrl");
+      router.push(callbackUrl || "/");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -50,31 +61,29 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
       <div className="w-full max-w-md">
         <div className="rounded-2xl bg-white p-8 shadow-xl">
-          {/* Logo / Brand */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-white">
               A
             </div>
             <h1 className="text-2xl font-bold text-foreground">Abbey CRM</h1>
-            <p className="mt-1 text-sm text-muted">
-              Visa Processing System
-            </p>
+            <p className="mt-1 text-sm text-muted">Visa Processing System</p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {/* Login Form */}
+          {info && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              {info}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
                 Email Address
               </label>
               <input
@@ -89,10 +98,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
                 Password
               </label>
               <input
@@ -121,5 +127,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

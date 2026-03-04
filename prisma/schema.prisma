@@ -85,6 +85,12 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
 enum NotificationType {
   MENTION
   CASE_ASSIGNED
@@ -96,14 +102,24 @@ enum NotificationType {
 // ─── Models ──────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role     @default(SALES)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String
+  passwordHash    String?
+  role            Role       @default(SALES)
+  status          UserStatus @default(PENDING)
+  mustSetPassword Boolean    @default(true)
+  sessionVersion  Int        @default(0)
+
+  // Employee profile
+  employeeId    String?  @unique
+  age           String?
+  gender        String?
+  contactNumber String?
+  homeAddress   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   createdTickets           Ticket[]           @relation("CreatedBy")
   assignedTickets          Ticket[]           @relation("AssignedTo")
@@ -210,15 +226,19 @@ model AuditLog {
   oldValue  String?
   newValue  String?
   metadata  String?
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
 
-  ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   userId   String
-  user     User   @relation(fields: [userId], references: [id])
+  user     User    @relation(fields: [userId], references: [id])
 
   @@index([ticketId])
   @@index([userId])
+  @@index([action])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 

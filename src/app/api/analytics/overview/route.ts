@@ -28,7 +28,7 @@ export async function GET() {
         _count: { id: true },
       }),
       db.user.count(),
-      db.user.count({ where: { isActive: true } }),
+      db.user.count({ where: { status: "ACTIVE" } }),
       db.auditLog.findMany({
         orderBy: { createdAt: "desc" },
         take: 10,

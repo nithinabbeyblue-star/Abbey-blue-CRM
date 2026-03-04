@@ -13,7 +13,7 @@ export async function SuperAdminDashboardContent() {
     recentActivity,
   ] = await Promise.all([
     db.ticket.count(),
-    db.user.count({ where: { isActive: true } }),
+    db.user.count({ where: { status: "ACTIVE" } }),
     db.ticket.count({ where: { status: "APPROVED" } }),
     db.ticket.count({ where: { status: "REJECTED" } }),
     db.payment.aggregate({
@@ -129,8 +129,12 @@ export async function SuperAdminDashboardContent() {
                     <p className="text-sm text-foreground">
                       <span className="font-medium">{log.user.name}</span>{" "}
                       {log.action.replace(/_/g, " ").toLowerCase()}
-                      {" on "}
-                      <span className="font-medium">{log.ticket.refNumber}</span>
+                      {log.ticket && (
+                        <>
+                          {" on "}
+                          <span className="font-medium">{log.ticket.refNumber}</span>
+                        </>
+                      )}
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
                       {new Date(log.createdAt).toLocaleDateString("en-GB", {

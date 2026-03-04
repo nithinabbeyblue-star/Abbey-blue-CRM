@@ -7,18 +7,31 @@ interface User {
   email: string;
   name: string;
   role: string;
-  isActive: boolean;
+  status: string;
+  mustSetPassword: boolean;
+  employeeId: string | null;
+  age: string | null;
+  gender: string | null;
+  contactNumber: string | null;
+  homeAddress: string | null;
   createdAt: string;
   _count: { createdTickets: number; assignedTickets: number };
 }
 
 const ROLES = ["SUPER_ADMIN", "KEY_COORDINATOR", "SALES", "ADMIN"];
+const GENDERS = ["Male", "Female", "Other"];
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-700",
   KEY_COORDINATOR: "bg-blue-100 text-blue-700",
   SALES: "bg-green-100 text-green-700",
   ADMIN: "bg-orange-100 text-orange-700",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-700",
+  ACTIVE: "bg-green-100 text-green-700",
+  SUSPENDED: "bg-red-100 text-red-700",
 };
 
 export default function UsersPage() {
@@ -31,6 +44,11 @@ export default function UsersPage() {
     email: "",
     password: "",
     role: "SALES",
+    employeeId: "",
+    age: "",
+    gender: "",
+    contactNumber: "",
+    homeAddress: "",
   });
   const [message, setMessage] = useState({ text: "", type: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -47,14 +65,34 @@ export default function UsersPage() {
   }, [fetchUsers]);
 
   function resetForm() {
-    setFormData({ name: "", email: "", password: "", role: "SALES" });
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "SALES",
+      employeeId: "",
+      age: "",
+      gender: "",
+      contactNumber: "",
+      homeAddress: "",
+    });
     setEditingUser(null);
     setShowForm(false);
   }
 
   function startEdit(user: User) {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, password: "", role: user.role });
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: "",
+      role: user.role,
+      employeeId: user.employeeId || "",
+      age: user.age || "",
+      gender: user.gender || "",
+      contactNumber: user.contactNumber || "",
+      homeAddress: user.homeAddress || "",
+    });
     setShowForm(true);
   }
 
@@ -65,12 +103,16 @@ export default function UsersPage() {
 
     try {
       if (editingUser) {
-        // Update
         const body: Record<string, string> = {};
         if (formData.name !== editingUser.name) body.name = formData.name;
         if (formData.email !== editingUser.email) body.email = formData.email;
         if (formData.role !== editingUser.role) body.role = formData.role;
         if (formData.password) body.password = formData.password;
+        if (formData.employeeId !== (editingUser.employeeId || "")) body.employeeId = formData.employeeId;
+        if (formData.age !== (editingUser.age || "")) body.age = formData.age;
+        if (formData.gender !== (editingUser.gender || "")) body.gender = formData.gender;
+        if (formData.contactNumber !== (editingUser.contactNumber || "")) body.contactNumber = formData.contactNumber;
+        if (formData.homeAddress !== (editingUser.homeAddress || "")) body.homeAddress = formData.homeAddress;
 
         const res = await fetch(`/api/users/${editingUser.id}`, {
           method: "PATCH",
@@ -87,15 +129,24 @@ export default function UsersPage() {
           setMessage({ text: data.error || "Failed to update", type: "error" });
         }
       } else {
-        // Create
+        // Create — no password field
         const res = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+            employeeId: formData.employeeId,
+            age: formData.age || undefined,
+            gender: formData.gender || undefined,
+            contactNumber: formData.contactNumber || undefined,
+            homeAddress: formData.homeAddress || undefined,
+          }),
         });
 
         if (res.ok) {
-          setMessage({ text: "User created successfully", type: "success" });
+          setMessage({ text: "User created successfully (PENDING — awaiting password set)", type: "success" });
           resetForm();
           fetchUsers();
         } else {
@@ -110,23 +161,38 @@ export default function UsersPage() {
     }
   }
 
-  async function toggleActive(user: User) {
+  async function handleAction(userId: string, action: string) {
+    const labels: Record<string, string> = {
+      grant_access: "grant access to",
+      suspend: "deactivate",
+      reactivate: "reactivate",
+    };
+
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+
+    if (action === "suspend") {
+      if (!confirm(`Are you sure you want to DEACTIVATE ${user.name}? This will immediately kill all their active sessions.`)) {
+        return;
+      }
+    }
+
     setMessage({ text: "", type: "" });
-    const res = await fetch(`/api/users/${user.id}`, {
+    const res = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !user.isActive }),
+      body: JSON.stringify({ action }),
     });
 
     if (res.ok) {
       setMessage({
-        text: `${user.name} has been ${user.isActive ? "deactivated" : "activated"}`,
+        text: `Successfully ${labels[action] || action}d ${user.name}`,
         type: "success",
       });
       fetchUsers();
     } else {
       const data = await res.json();
-      setMessage({ text: data.error || "Failed to update", type: "error" });
+      setMessage({ text: data.error || "Action failed", type: "error" });
     }
   }
 
@@ -149,7 +215,6 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Message */}
       {message.text && (
         <div
           className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
@@ -171,7 +236,7 @@ export default function UsersPage() {
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             {editingUser ? `Edit: ${editingUser.name}` : "Create New User"}
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Full Name <span className="text-danger">*</span>
@@ -197,16 +262,13 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Password {editingUser ? "(leave blank to keep)" : ""}{" "}
-                {!editingUser && <span className="text-danger">*</span>}
+                Employee ID <span className="text-danger">*</span>
               </label>
               <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={formData.employeeId}
+                onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                 required={!editingUser}
-                minLength={6}
-                placeholder={editingUser ? "Leave blank to keep current" : "Min 6 characters"}
+                placeholder="e.g. ABL-001"
                 className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -220,13 +282,71 @@ export default function UsersPage() {
                 className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r.replace(/_/g, " ")}
-                  </option>
+                  <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Age</label>
+              <input
+                value={formData.age}
+                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                placeholder="e.g. 28"
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Gender</label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Select...</option>
+                {GENDERS.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Contact Number</label>
+              <input
+                value={formData.contactNumber}
+                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                placeholder="+353 ..."
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Home Address</label>
+              <input
+                value={formData.homeAddress}
+                onChange={(e) => setFormData({ ...formData, homeAddress: e.target.value })}
+                placeholder="Street, City, County"
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            {editingUser && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Password (leave blank to keep)
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  minLength={6}
+                  placeholder="Leave blank to keep current"
+                  className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            )}
           </div>
+          {!editingUser && (
+            <p className="mt-3 text-xs text-muted">
+              No password needed — the user will set their own password on first login.
+            </p>
+          )}
           <div className="mt-4 flex gap-3">
             <button
               type="submit"
@@ -253,6 +373,7 @@ export default function UsersPage() {
             <tr className="border-b border-border bg-gray-50/50">
               <th className="px-4 py-3 text-left font-medium text-muted">Name</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Email</th>
+              <th className="px-4 py-3 text-left font-medium text-muted">Employee ID</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Role</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Tickets</th>
@@ -263,16 +384,25 @@ export default function UsersPage() {
           <tbody>
             {users.map((user) => (
               <tr key={user.id} className="border-b border-border last:border-0 hover:bg-gray-50/50">
-                <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
+                <td className="px-4 py-3">
+                  <p className="font-medium text-foreground">{user.name}</p>
+                  {user.mustSetPassword && user.status === "PENDING" && (
+                    <p className="text-xs text-yellow-600">Awaiting password</p>
+                  )}
+                  {!user.mustSetPassword && user.status === "PENDING" && (
+                    <p className="text-xs text-blue-600">Ready for approval</p>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-muted">{user.email}</td>
+                <td className="px-4 py-3 text-xs text-muted">{user.employeeId || "—"}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-700"}`}>
                     {user.role.replace(/_/g, " ")}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                    {user.isActive ? "Active" : "Inactive"}
+                  <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[user.status] || "bg-gray-100 text-gray-700"}`}>
+                    {user.status}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
@@ -285,23 +415,43 @@ export default function UsersPage() {
                   {new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       onClick={() => startEdit(user)}
                       className="rounded border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-gray-50"
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => toggleActive(user)}
-                      className={`rounded px-2.5 py-1 text-xs font-medium ${
-                        user.isActive
-                          ? "border border-red-200 text-red-600 hover:bg-red-50"
-                          : "border border-green-200 text-green-600 hover:bg-green-50"
-                      }`}
-                    >
-                      {user.isActive ? "Deactivate" : "Activate"}
-                    </button>
+
+                    {/* PENDING + password set → Grant Access */}
+                    {user.status === "PENDING" && !user.mustSetPassword && (
+                      <button
+                        onClick={() => handleAction(user.id, "grant_access")}
+                        className="rounded border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                      >
+                        Grant Access
+                      </button>
+                    )}
+
+                    {/* ACTIVE → Kill Switch */}
+                    {user.status === "ACTIVE" && (
+                      <button
+                        onClick={() => handleAction(user.id, "suspend")}
+                        className="rounded border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      >
+                        Kill Switch
+                      </button>
+                    )}
+
+                    {/* SUSPENDED → Reactivate */}
+                    {user.status === "SUSPENDED" && (
+                      <button
+                        onClick={() => handleAction(user.id, "reactivate")}
+                        className="rounded border border-green-200 px-2.5 py-1 text-xs font-medium text-green-600 hover:bg-green-50"
+                      >
+                        Reactivate
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

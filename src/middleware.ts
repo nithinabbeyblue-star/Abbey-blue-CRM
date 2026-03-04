@@ -1,17 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { SessionData } from "@/lib/auth";
-import { canAccessPath, getDashboardPath } from "@/lib/rbac";
-import { Role } from "@/generated/prisma/enums";
+import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
+import { authConfig } from "@/auth.config";
 
 // Paths that don't require authentication
-const publicPaths = ["/login", "/api/auth/login", "/api/webhooks"];
+const publicPaths = ["/login", "/activate", "/api/auth"];
 
 function isPublicPath(path: string): boolean {
   return publicPaths.some((p) => path.startsWith(p));
 }
 
-export async function middleware(request: NextRequest) {
+// Role → dashboard path mapping (duplicated from rbac to avoid importing non-edge modules)
+function getDashboardForRole(role: string): string {
+  switch (role) {
+    case "SUPER_ADMIN":
+      return "/super-admin";
+    case "KEY_COORDINATOR":
+      return "/admin";
+    case "ADMIN":
+      return "/admin";
+    case "SALES":
+      return "/sales";
+    default:
+      return "/login";
+  }
+}
+
+// Role → allowed path prefixes (duplicated to keep middleware edge-compatible)
+const rolePathMap: Record<string, string[]> = {
+  SUPER_ADMIN: ["/super-admin", "/api/"],
+  KEY_COORDINATOR: ["/admin", "/api/"],
+  ADMIN: ["/admin", "/api/"],
+  SALES: ["/sales", "/api/"],
+};
+
+function canAccess(role: string, pathname: string): boolean {
+  const allowed = rolePathMap[role];
+  if (!allowed) return false;
+  return allowed.some((p) => pathname.startsWith(p));
+}
+
+const { auth } = NextAuth(authConfig);
+
+export default auth((request) => {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
@@ -19,21 +49,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Get session from cookie
-  const response = NextResponse.next();
-  const session = await getIronSession<SessionData>(
-    request,
-    response,
-    {
-      password: process.env.SESSION_SECRET!,
-      cookieName: "abbey-crm-session",
-    }
-  );
-
   const isApiRoute = pathname.startsWith("/api/");
+  const user = request.auth?.user;
 
   // Not logged in → redirect to login (or JSON 401 for API routes)
-  if (!session.isLoggedIn) {
+  if (!user) {
     if (isApiRoute) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -44,28 +64,24 @@ export async function middleware(request: NextRequest) {
 
   // Root path → redirect to role-based dashboard
   if (pathname === "/") {
-    const dashboardPath = getDashboardPath(session.role as Role);
+    const dashboardPath = getDashboardForRole(user.role);
     return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
 
   // RBAC check — does this role have access to this path?
-  if (!canAccessPath(session.role as Role, pathname)) {
+  if (!canAccess(user.role, pathname)) {
     if (isApiRoute) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const dashboardPath = getDashboardPath(session.role as Role);
+    const dashboardPath = getDashboardForRole(user.role);
     return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
 
-  return response;
-}
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    /*
-     * Exclude static assets and Next.js internals so middleware does not run on every request.
-     * Only run on HTML pages and API routes.
-     */
     "/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf|eot)$).*)",
   ],
 };

@@ -33,10 +33,10 @@ export async function PATCH(
     // Verify the target user is an ADMIN
     const adminUser = await db.user.findUnique({
       where: { id: assignedToId },
-      select: { id: true, role: true, name: true, isActive: true },
+      select: { id: true, role: true, name: true, status: true },
     });
 
-    if (!adminUser || adminUser.role !== Role.ADMIN || !adminUser.isActive) {
+    if (!adminUser || adminUser.role !== Role.ADMIN || adminUser.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "Invalid admin user" },
         { status: 400 }

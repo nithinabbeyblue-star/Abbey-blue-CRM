@@ -7,6 +7,7 @@ const superAdminNav = [
   { label: "My Cases", href: "/super-admin/my-cases", icon: "\u{1F4CB}" },
   { label: "Users", href: "/super-admin/users", icon: "\u{1F465}" },
   { label: "Finance", href: "/super-admin/finance", icon: "\u{1F4B0}" },
+  { label: "Audit Logs", href: "/super-admin/audit-logs", icon: "\u{1F50D}" },
 ];
 
 export default async function SuperAdminLayout({
