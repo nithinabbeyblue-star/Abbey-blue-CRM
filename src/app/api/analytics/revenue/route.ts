@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { Role } from "@/generated/prisma/enums";
 import { cached } from "@/lib/redis";
+import { calcNetProfit, calcVatLiability, calcProfitMargin } from "@/lib/finance.server";
 
 // GET /api/analytics/revenue — Revenue tracking (Super Admin only)
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const cacheKey = `analytics:revenue:${period}`;
 
-  const data = await cached(cacheKey, 300, async () => {
+  const data = await cached(cacheKey, 600, async () => {
     // Build date filter
     const dateFilter: Record<string, unknown> = {};
     const now = new Date();
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
       paymentsByType,
       recentPayments,
       ticketCount,
+      ticketFinancials,
     ] = await Promise.all([
       db.payment.aggregate({
         where: dateFilter,
@@ -66,12 +68,38 @@ export async function GET(request: NextRequest) {
         },
       }),
       db.ticket.count({ where: dateFilter }),
+      // Ticket-based financial aggregation
+      db.ticket.aggregate({
+        where: {
+          ...dateFilter,
+          ablFee: { not: null },
+        },
+        _sum: {
+          ablFee: true,
+          govFee: true,
+          adverts: true,
+          paidAmount: true,
+        },
+        _count: { id: true },
+      }),
     ]);
 
     const totalPaid = paidRevenue._sum.amount || 0;
     const avgRevenuePerTicket = ticketCount > 0 ? Math.round(totalPaid / ticketCount) : 0;
 
+    // Ticket-based financial intelligence
+    const totalAblFee = ticketFinancials._sum.ablFee || 0;
+    const totalGovFee = ticketFinancials._sum.govFee || 0;
+    const totalAdverts = ticketFinancials._sum.adverts || 0;
+    const totalCollected = ticketFinancials._sum.paidAmount || 0;
+    const ticketRevenue = totalAblFee + totalGovFee + totalAdverts;
+    const netProfit = calcNetProfit(totalAblFee, totalGovFee, totalAdverts);
+    const vatLiability = calcVatLiability(totalAblFee);
+    const profitMargin = calcProfitMargin(netProfit, ticketRevenue);
+    const outstanding = ticketRevenue - totalCollected;
+
     return {
+      // Payment-based stats (existing)
       totalRevenue: totalRevenue._sum.amount || 0,
       paidRevenue: totalPaid,
       pendingRevenue: pendingRevenue._sum.amount || 0,
@@ -82,6 +110,14 @@ export async function GET(request: NextRequest) {
         count: p._count.id,
       })),
       recentPayments,
+      // Ticket-based financial intelligence (new)
+      ticketRevenue,
+      netProfit,
+      vatLiability,
+      profitMargin,
+      collected: totalCollected,
+      outstanding: Math.max(0, outstanding),
+      ticketCount: ticketFinancials._count.id,
       period,
     };
   });

@@ -77,50 +77,18 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
     setMessage({ text: "", type: "" });
 
     try {
-      // Step 1: Get presigned upload URL
-      const presignRes = await fetch(`/api/tickets/${ticketId}/documents/presign`, {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileType", selectedType);
+
+      const res = await fetch(`/api/tickets/${ticketId}/documents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          fileSize: file.size,
-        }),
+        body: formData,
       });
 
-      if (!presignRes.ok) {
-        const err = await presignRes.json();
-        throw new Error(err.error || "Failed to get upload URL");
-      }
-
-      const { uploadUrl, key, fileName } = await presignRes.json();
-
-      // Step 2: Upload directly to S3
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload file to storage");
-      }
-
-      // Step 3: Confirm upload — save DB record
-      const confirmRes = await fetch(`/api/tickets/${ticketId}/documents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName,
-          fileKey: key,
-          fileType: selectedType,
-          fileSize: file.size,
-          mimeType: file.type || "application/octet-stream",
-        }),
-      });
-
-      if (!confirmRes.ok) {
-        throw new Error("Failed to save document record");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to upload document");
       }
 
       setMessage({ text: "Document uploaded successfully", type: "success" });

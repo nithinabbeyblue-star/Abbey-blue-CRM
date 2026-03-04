@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { DocumentSection } from "@/components/documents/document-section";
 import { ChatPanel } from "@/components/chat/chat-panel";
-import { StatusBadge, ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
-import { CaseBadge } from "@/components/ui/case-badge";
+import { ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
+import { CaseHeader } from "@/components/tickets/case-header";
+import { FinancialCard } from "@/components/tickets/financial-card";
+import { EditableDetailsCard } from "@/components/tickets/editable-details-card";
 
 interface AuditLog {
   id: string;
@@ -32,6 +34,13 @@ interface Ticket {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  ablFee: number | null;
+  govFee: number | null;
+  adverts: number | null;
+  paidAmount: number;
+  caseDeadline: string | null;
+  financesUpdatedBy: { name: string } | null;
+  financesUpdatedAt: string | null;
   createdBy: { id: string; name: string; email: string };
   assignedTo: { id: string; name: string; email: string } | null;
   auditLogs: AuditLog[];
@@ -126,24 +135,17 @@ export default function AdminTicketDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <Link href="/admin/tickets" className="text-sm text-muted hover:text-primary">
-            &larr; Back to tickets
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-foreground">{ticket.refNumber}</h1>
-          <p className="mt-1 text-sm text-muted">
-            Created by {ticket.createdBy.name} on{" "}
-            {new Date(ticket.createdAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-        <StatusBadge status={ticket.status} size="sm" />
-      </div>
+      {/* Pinned Case Header */}
+      <CaseHeader
+        refNumber={ticket.refNumber}
+        clientName={ticket.clientName}
+        caseType={ticket.caseType}
+        status={ticket.status}
+        caseOwner={ticket.createdBy}
+        caseWorker={ticket.assignedTo}
+        caseDeadline={ticket.caseDeadline}
+        backHref="/admin/tickets"
+      />
 
       {/* Message */}
       {message.text && (
@@ -161,58 +163,33 @@ export default function AdminTicketDetailPage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column — Client & Visa Info */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Client Info */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-              Client Information
-            </h2>
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-xs font-medium text-muted">Full Name</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">{ticket.clientName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Phone</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.clientPhone}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Email</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.clientEmail || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Nationality</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.nationality || "—"}</dd>
-              </div>
-            </dl>
-          </div>
+          {/* Editable Client & Case Details */}
+          <EditableDetailsCard
+            ticketId={id}
+            clientName={ticket.clientName}
+            clientPhone={ticket.clientPhone}
+            clientEmail={ticket.clientEmail}
+            nationality={ticket.nationality}
+            caseType={ticket.caseType}
+            destination={ticket.destination}
+            source={ticket.source}
+            onSaved={fetchTicket}
+          />
 
-          {/* Case Details */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-              Case Details
-            </h2>
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-xs font-medium text-muted">Case Type</dt>
-                <dd className="mt-1 text-sm text-foreground">
-                  <CaseBadge caseType={ticket.caseType} />
-                  {!ticket.caseType && "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Destination</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.destination || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Source</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.source.replace(/_/g, " ")}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted">Assigned To</dt>
-                <dd className="mt-1 text-sm text-foreground">{ticket.assignedTo?.name || "Unassigned"}</dd>
-              </div>
-            </dl>
-          </div>
+          {/* Financials */}
+          <FinancialCard
+            ticketId={id}
+            ablFee={ticket.ablFee}
+            govFee={ticket.govFee}
+            adverts={ticket.adverts}
+            paidAmount={ticket.paidAmount}
+            caseDeadline={ticket.caseDeadline}
+            financesUpdatedBy={ticket.financesUpdatedBy}
+            financesUpdatedAt={ticket.financesUpdatedAt}
+            canEditFees={false}
+            canEditPaidAmount={true}
+            canEditDeadline={true}
+          />
 
           {/* Notes */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">

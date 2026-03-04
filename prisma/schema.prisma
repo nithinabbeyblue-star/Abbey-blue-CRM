@@ -105,8 +105,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdTickets    Ticket[]           @relation("CreatedBy")
-  assignedTickets   Ticket[]           @relation("AssignedTo")
+  createdTickets           Ticket[]           @relation("CreatedBy")
+  assignedTickets          Ticket[]           @relation("AssignedTo")
+  financesUpdatedTickets   Ticket[]           @relation("FinancesUpdatedBy")
   uploadedDocs      Document[]
   recordedPayments  Payment[]
   auditLogs         AuditLog[]
@@ -132,6 +133,18 @@ model Ticket {
   priority    Int          @default(0)
   source      LeadSource   @default(WALK_IN)
   notes       String?
+
+  // Financial
+  ablFee       Float?
+  govFee       Float?
+  adverts      Float?
+  paidAmount   Float      @default(0)
+  caseDeadline DateTime?
+
+  financesUpdatedById String?
+  financesUpdatedBy   User?    @relation("FinancesUpdatedBy", fields: [financesUpdatedById], references: [id])
+  financesUpdatedAt   DateTime?
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -147,6 +160,9 @@ model Ticket {
   @@index([status])
   @@index([createdById])
   @@index([assignedToId])
+  @@index([clientName])
+  @@index([clientEmail])
+  @@index([clientPhone])
   @@map("tickets")
 }
 

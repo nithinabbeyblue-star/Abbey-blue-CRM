@@ -16,12 +16,11 @@
     "db:studio": "pnpm exec prisma studio"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.999.0",
-    "@aws-sdk/s3-request-presigner": "^3.999.0",
     "@headlessui/react": "^2.2.9",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
     "bcryptjs": "^3.0.3",
+    "googleapis": "^171.4.0",
     "ioredis": "^5.9.3",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
@@ -31,7 +30,9 @@
     "pusher-js": "^8.4.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
     "resend": "^6.9.2",
+    "server-only": "^0.0.1",
     "web-push": "^3.6.7",
     "zod": "^4.3.6"
   },

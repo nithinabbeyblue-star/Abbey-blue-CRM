@@ -3,6 +3,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { Role } from "@/generated/prisma/enums";
+import { invalidateCache } from "@/lib/redis";
+import { triggerEvent } from "@/lib/pusher";
 
 const createPaymentSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
@@ -55,6 +57,10 @@ export async function POST(
         metadata: JSON.stringify({ paymentId: payment.id, status: data.status }),
       },
     });
+
+    // Invalidate revenue/overview caches and notify finance dashboard
+    await invalidateCache("analytics:revenue:*", "analytics:revenue:trends", "analytics:overview");
+    triggerEvent("finance-dashboard", "finance-updated", { ticketId: id });
 
     return NextResponse.json({ payment }, { status: 201 });
   } catch (err) {

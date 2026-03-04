@@ -161,33 +161,22 @@ export function ChatPanel({
     mimeType: string;
   } | null> {
     try {
-      // Get presigned URL
-      const presignRes = await fetch(`/api/chat/${roomId}/attachments/presign`, {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/chat/${roomId}/attachments/presign`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          fileSize: file.size,
-        }),
+        body: formData,
       });
-      if (!presignRes.ok) return null;
-      const { uploadUrl, key } = await presignRes.json();
+      if (!res.ok) return null;
 
-      // Upload to S3
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      if (!uploadRes.ok) return null;
-
+      const data = await res.json();
       return {
-        fileName: file.name,
-        fileUrl: uploadUrl.split("?")[0], // S3 object URL without query params
-        fileKey: key,
-        fileSize: file.size,
-        mimeType: file.type || "application/octet-stream",
+        fileName: data.fileName,
+        fileUrl: data.fileUrl,
+        fileKey: data.fileKey,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
       };
     } catch {
       return null;
@@ -265,11 +254,11 @@ export function ChatPanel({
     inputRef.current?.focus();
   }
 
-  function formatTime(dateStr: string): string {
-    return new Date(dateStr).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  function formatTimestamp(dateStr: string): string {
+    const d = new Date(dateStr);
+    const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    return `${date} - ${time}`;
   }
 
   function formatDate(dateStr: string): string {
@@ -357,7 +346,7 @@ export function ChatPanel({
                             {msg.sender.name}
                           </span>
                         )}
-                        <span className="text-[10px] text-muted">{formatTime(msg.createdAt)}</span>
+                        <span className="text-[10px] text-muted">{formatTimestamp(msg.createdAt)}</span>
                       </div>
                       <div
                         className={`inline-block rounded-xl px-3 py-2 text-sm ${

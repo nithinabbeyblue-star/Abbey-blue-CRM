@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CaseDropdown } from "@/components/ui/case-dropdown";
 import type { CaseTypeKey } from "@/constants/cases";
+import { calcVat, calcTotal, formatCurrency } from "@/constants/finance";
 
 const SOURCES = [
   { value: "WHATSAPP", label: "WhatsApp" },
@@ -24,6 +25,9 @@ export default function NewTicketPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [caseType, setCaseType] = useState<CaseTypeKey | null>(null);
+  const [ablFee, setAblFee] = useState<number | null>(null);
+  const [govFee, setGovFee] = useState<number | null>(null);
+  const [adverts, setAdverts] = useState<number | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,7 +35,7 @@ export default function NewTicketPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const body = {
+    const body: Record<string, unknown> = {
       clientName: formData.get("clientName") as string,
       clientEmail: formData.get("clientEmail") as string,
       clientPhone: formData.get("clientPhone") as string,
@@ -42,6 +46,9 @@ export default function NewTicketPage() {
       priority: parseInt(formData.get("priority") as string, 10),
       notes: formData.get("notes") as string,
     };
+    if (ablFee != null) body.ablFee = ablFee;
+    if (govFee != null) body.govFee = govFee;
+    if (adverts != null) body.adverts = adverts;
 
     try {
       const res = await fetch("/api/tickets", {
@@ -155,6 +162,60 @@ export default function NewTicketPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Financials (optional) */}
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
+            Financials <span className="font-normal normal-case text-muted">(optional)</span>
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">ABL Fee</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={ablFee ?? ""}
+                onChange={(e) => setAblFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                placeholder="0.00"
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Gov Fee</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={govFee ?? ""}
+                onChange={(e) => setGovFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                placeholder="0.00"
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Adverts</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={adverts ?? ""}
+                onChange={(e) => setAdverts(e.target.value === "" ? null : parseFloat(e.target.value))}
+                placeholder="0.00"
+                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+          {/* Live preview */}
+          {(ablFee != null || govFee != null || adverts != null) && (
+            <div className="mt-4 flex items-center gap-4 rounded-lg bg-gray-50 px-4 py-3 text-sm">
+              {ablFee != null && ablFee > 0 && (
+                <span className="text-muted">VAT in ABL: <span className="font-medium text-foreground">{formatCurrency(calcVat(ablFee))}</span></span>
+              )}
+              <span className="text-muted">Total: <span className="font-bold text-foreground">{formatCurrency(calcTotal(ablFee, govFee, adverts))}</span></span>
+            </div>
+          )}
         </div>
 
         {/* Lead Info */}

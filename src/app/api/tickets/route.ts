@@ -24,6 +24,11 @@ const createTicketSchema = z.object({
   ]),
   priority: z.number().min(0).max(2).optional(),
   notes: z.string().optional().or(z.literal("")),
+  // Financial fields (optional at creation)
+  ablFee: z.number().min(0).nullable().optional(),
+  govFee: z.number().min(0).nullable().optional(),
+  adverts: z.number().min(0).nullable().optional(),
+  caseDeadline: z.string().nullable().optional(),
 });
 
 // POST /api/tickets — Create a new ticket (Sales only)
@@ -49,6 +54,13 @@ export async function POST(request: NextRequest) {
         priority: data.priority ?? 0,
         notes: data.notes || null,
         createdById: user.userId,
+        ablFee: data.ablFee ?? null,
+        govFee: data.govFee ?? null,
+        adverts: data.adverts ?? null,
+        caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
+        ...(data.ablFee != null || data.govFee != null || data.adverts != null
+          ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
+          : {}),
       },
     });
 
@@ -152,7 +164,17 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
-      include: {
+      select: {
+        id: true,
+        refNumber: true,
+        clientName: true,
+        clientPhone: true,
+        caseType: true,
+        destination: true,
+        status: true,
+        source: true,
+        priority: true,
+        createdAt: true,
         createdBy: { select: { id: true, name: true } },
         assignedTo: { select: { id: true, name: true } },
       },

@@ -47,3 +47,24 @@ export async function cached<T>(
 
   return data;
 }
+
+/** Delete cache entries by exact key or glob pattern. Fails silently. */
+export async function invalidateCache(...patterns: string[]): Promise<void> {
+  const client = getRedis();
+  if (!client) return;
+
+  try {
+    for (const pattern of patterns) {
+      if (pattern.includes("*")) {
+        const keys = await client.keys(pattern);
+        if (keys.length > 0) {
+          await client.del(...keys);
+        }
+      } else {
+        await client.del(pattern);
+      }
+    }
+  } catch {
+    // Ignore — cache invalidation is best-effort
+  }
+}

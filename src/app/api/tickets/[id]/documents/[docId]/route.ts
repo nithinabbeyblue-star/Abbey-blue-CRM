@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
-import { deleteS3Object } from "@/lib/s3";
+import { deleteFromGoogleDrive } from "@/lib/google-drive";
 import { Role } from "@/generated/prisma/enums";
 
 // DELETE /api/tickets/[id]/documents/[docId] — Delete a document
@@ -23,10 +23,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    // Delete from S3
+    // Delete from Google Drive
     if (document.fileKey) {
-      await deleteS3Object(document.fileKey).catch((err) => {
-        console.error("S3 delete error (non-fatal):", err);
+      await deleteFromGoogleDrive(document.fileKey).catch((err) => {
+        console.error("Google Drive delete error (non-fatal):", err);
       });
     }
 

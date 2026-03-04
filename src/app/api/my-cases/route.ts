@@ -46,7 +46,19 @@ export async function GET(request: NextRequest) {
   const tickets = await db.ticket.findMany({
     where,
     orderBy,
-    include: {
+    select: {
+      id: true,
+      refNumber: true,
+      clientName: true,
+      clientPhone: true,
+      clientEmail: true,
+      caseType: true,
+      destination: true,
+      status: true,
+      source: true,
+      priority: true,
+      createdAt: true,
+      updatedAt: true,
       createdBy: { select: { id: true, name: true } },
       assignedTo: { select: { id: true, name: true } },
     },

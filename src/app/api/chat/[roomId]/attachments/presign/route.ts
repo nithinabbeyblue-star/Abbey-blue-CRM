@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { getPresignedUploadUrl } from "@/lib/s3";
+import { uploadToGoogleDrive } from "@/lib/google-drive";
 
-const presignSchema = z.object({
-  fileName: z.string().min(1),
-  contentType: z.string().min(1),
-  fileSize: z.number().positive().max(10 * 1024 * 1024, "File must be under 10MB"),
-});
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-// POST /api/chat/[roomId]/attachments/presign — Get presigned URL for chat file upload
+// POST /api/chat/[roomId]/attachments/presign — Upload a chat attachment
+// (Route path kept for backward compatibility; now does direct upload instead of presigning)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
@@ -31,26 +27,31 @@ export async function POST(
   }
 
   try {
-    const body = await request.json();
-    const { fileName, contentType, fileSize } = presignSchema.parse(body);
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
 
-    const room = await db.chatRoom.findUnique({
-      where: { id: roomId },
-      select: { ticketId: true },
-    });
-
-    const ext = fileName.split(".").pop() || "bin";
-    const fileId = crypto.randomUUID();
-    const key = `chat/${room?.ticketId || roomId}/${fileId}.${ext}`;
-
-    const uploadUrl = await getPresignedUploadUrl(key, contentType);
-
-    return NextResponse.json({ uploadUrl, key, fileName, fileSize, contentType });
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: err.issues }, { status: 400 });
+    if (!file || !(file instanceof File)) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-    console.error("Chat attachment presign error:", err);
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File must be under 10MB" }, { status: 400 });
+    }
+
+    const mimeType = file.type || "application/octet-stream";
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { fileId, downloadUrl } = await uploadToGoogleDrive(file.name, mimeType, buffer);
+
+    return NextResponse.json({
+      fileName: file.name,
+      fileUrl: downloadUrl,
+      fileKey: fileId,
+      fileSize: file.size,
+      mimeType,
+    });
+  } catch (err) {
+    console.error("Chat attachment upload error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

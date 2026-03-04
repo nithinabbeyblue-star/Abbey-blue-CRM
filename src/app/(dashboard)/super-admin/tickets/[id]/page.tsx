@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DocumentSection } from "@/components/documents/document-section";
 import { ChatPanel } from "@/components/chat/chat-panel";
-import { StatusBadge, ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
-import { CaseBadge } from "@/components/ui/case-badge";
+import { ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
+import { CaseHeader } from "@/components/tickets/case-header";
+import { FinancialCard } from "@/components/tickets/financial-card";
+import { EditableDetailsCard } from "@/components/tickets/editable-details-card";
 
 interface AuditLog {
   id: string;
@@ -32,6 +34,13 @@ interface Ticket {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  ablFee: number | null;
+  govFee: number | null;
+  adverts: number | null;
+  paidAmount: number;
+  caseDeadline: string | null;
+  financesUpdatedBy: { name: string } | null;
+  financesUpdatedAt: string | null;
   createdBy: { id: string; name: string; email: string };
   assignedTo: { id: string; name: string; email: string } | null;
   auditLogs: AuditLog[];
@@ -45,6 +54,7 @@ interface AdminUser {
 
 export default function SuperAdminTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,6 +122,19 @@ export default function SuperAdminTicketDetailPage() {
     setUpdating(false);
   }
 
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
+    setUpdating(true);
+    const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/super-admin/tickets");
+    } else {
+      const data = await res.json();
+      setMessage({ text: data.error || "Failed to delete", type: "error" });
+      setUpdating(false);
+    }
+  }
+
   if (loading) return <div className="py-16 text-center text-sm text-muted">Loading...</div>;
   if (!ticket) return (
     <div className="py-16 text-center">
@@ -122,17 +145,16 @@ export default function SuperAdminTicketDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="flex items-start justify-between">
-        <div>
-          <Link href="/super-admin/tickets" className="text-sm text-muted hover:text-primary">&larr; Back</Link>
-          <h1 className="mt-2 text-2xl font-bold text-foreground">{ticket.refNumber}</h1>
-          <p className="mt-1 text-sm text-muted">
-            Created by {ticket.createdBy.name} on{" "}
-            {new Date(ticket.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
-          </p>
-        </div>
-        <StatusBadge status={ticket.status} size="sm" />
-      </div>
+      <CaseHeader
+        refNumber={ticket.refNumber}
+        clientName={ticket.clientName}
+        caseType={ticket.caseType}
+        status={ticket.status}
+        caseOwner={ticket.createdBy}
+        caseWorker={ticket.assignedTo}
+        caseDeadline={ticket.caseDeadline}
+        backHref="/super-admin/tickets"
+      />
 
       {message.text && (
         <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
@@ -142,18 +164,33 @@ export default function SuperAdminTicketDetailPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          {/* Client Info */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Client Information</h2>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
-              <div><dt className="text-xs font-medium text-muted">Name</dt><dd className="mt-1 font-medium">{ticket.clientName}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Phone</dt><dd className="mt-1">{ticket.clientPhone}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Email</dt><dd className="mt-1">{ticket.clientEmail || "—"}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Nationality</dt><dd className="mt-1">{ticket.nationality || "—"}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Case Type</dt><dd className="mt-1"><CaseBadge caseType={ticket.caseType} />{!ticket.caseType && "—"}</dd></div>
-              <div><dt className="text-xs font-medium text-muted">Destination</dt><dd className="mt-1">{ticket.destination || "—"}</dd></div>
-            </dl>
-          </div>
+          {/* Editable Client & Case Details */}
+          <EditableDetailsCard
+            ticketId={id}
+            clientName={ticket.clientName}
+            clientPhone={ticket.clientPhone}
+            clientEmail={ticket.clientEmail}
+            nationality={ticket.nationality}
+            caseType={ticket.caseType}
+            destination={ticket.destination}
+            source={ticket.source}
+            onSaved={fetchTicket}
+          />
+
+          {/* Financials */}
+          <FinancialCard
+            ticketId={id}
+            ablFee={ticket.ablFee}
+            govFee={ticket.govFee}
+            adverts={ticket.adverts}
+            paidAmount={ticket.paidAmount}
+            caseDeadline={ticket.caseDeadline}
+            financesUpdatedBy={ticket.financesUpdatedBy}
+            financesUpdatedAt={ticket.financesUpdatedAt}
+            canEditFees={true}
+            canEditPaidAmount={true}
+            canEditDeadline={true}
+          />
 
           {/* Notes */}
           {ticket.notes && (
@@ -240,6 +277,23 @@ export default function SuperAdminTicketDetailPage() {
           {currentUserId && (
             <ChatPanel ticketId={id} currentUserId={currentUserId} />
           )}
+
+          {/* Delete Ticket */}
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">
+              Danger Zone
+            </h2>
+            <p className="mb-3 text-xs text-red-600">
+              Permanently delete this ticket and all associated data (documents, chat, audit logs).
+            </p>
+            <button
+              onClick={handleDelete}
+              disabled={updating}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              Delete Ticket
+            </button>
+          </div>
         </div>
       </div>
     </div>
