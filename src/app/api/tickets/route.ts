@@ -30,6 +30,7 @@ const createTicketSchema = z.object({
   adverts: z.number().min(0).nullable().optional(),
   caseDeadline: z.string().nullable().optional(),
   caseStartDate: z.string().min(1, "Case start date is required"),
+  caseEndDate: z.string().nullable().optional(),
 });
 
 // POST /api/tickets — Create a new ticket (Sales only)
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         adverts: data.adverts ?? null,
         caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
         caseStartDate: data.caseStartDate ? new Date(data.caseStartDate) : null,
+        caseEndDate: data.caseEndDate ? new Date(data.caseEndDate) : null,
         ...(data.ablFee != null || data.govFee != null || data.adverts != null
           ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
           : {}),

@@ -82,6 +82,8 @@ export default function NewTicketPage() {
       notes: formData.get("notes") as string,
       caseStartDate: (formData.get("caseStartDate") as string).trim(),
     };
+    const caseEndDate = (formData.get("caseEndDate") as string)?.trim();
+    if (caseEndDate) body.caseEndDate = caseEndDate;
     if (ablFee != null) body.ablFee = ablFee;
     if (govFee != null) body.govFee = govFee;
     if (adverts != null) body.adverts = adverts;
@@ -222,18 +224,30 @@ export default function NewTicketPage() {
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.destination}</p>
               )}
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Case Start Date <span className="text-danger">*</span>
-              </label>
-              <input
-                name="caseStartDate"
-                type="date"
-                className={inputClass("caseStartDate")}
-              />
-              {attempted && fieldErrors.caseStartDate && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.caseStartDate}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Case Start Date <span className="text-danger">*</span>
+                </label>
+                <input
+                  name="caseStartDate"
+                  type="date"
+                  className={inputClass("caseStartDate")}
+                />
+                {attempted && fieldErrors.caseStartDate && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.caseStartDate}</p>
+                )}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Case End Date
+                </label>
+                <input
+                  name="caseEndDate"
+                  type="date"
+                  className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
             </div>
           </div>
         </div>

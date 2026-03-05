@@ -41,6 +41,7 @@ const updateTicketSchema = z.object({
   paidAmount: z.number().min(0).optional(),
   caseDeadline: z.string().nullable().optional(),
   caseStartDate: z.string().nullable().optional(),
+  caseEndDate: z.string().nullable().optional(),
   adsFinishingDate: z.string().nullable().optional(),
 });
 
@@ -214,6 +215,15 @@ export async function PATCH(
         action: "CASE_START_DATE_UPDATED",
         oldValue: ticket.caseStartDate?.toISOString() ?? null,
         newValue: data.caseStartDate ?? null,
+      });
+    }
+
+    if (data.caseEndDate !== undefined) {
+      updateData.caseEndDate = data.caseEndDate ? new Date(data.caseEndDate) : null;
+      auditEntries.push({
+        action: "CASE_END_DATE_UPDATED",
+        oldValue: ticket.caseEndDate?.toISOString() ?? null,
+        newValue: data.caseEndDate ?? null,
       });
     }
 

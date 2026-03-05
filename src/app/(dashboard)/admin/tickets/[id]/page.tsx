@@ -40,6 +40,7 @@ interface Ticket {
   paidAmount: number;
   caseDeadline: string | null;
   caseStartDate: string | null;
+  caseEndDate: string | null;
   adsFinishingDate: string | null;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
@@ -155,6 +156,7 @@ export default function AdminTicketDetailPage() {
             destination={ticket.destination}
             source={ticket.source}
             caseStartDate={ticket.caseStartDate}
+            caseEndDate={ticket.caseEndDate}
             adsFinishingDate={ticket.adsFinishingDate}
             caseDeadline={ticket.caseDeadline}
             onSaved={fetchTicket}

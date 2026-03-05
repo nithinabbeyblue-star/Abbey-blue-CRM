@@ -157,6 +157,7 @@ model Ticket {
   paidAmount   Float      @default(0)
   caseDeadline     DateTime?
   caseStartDate    DateTime?
+  caseEndDate      DateTime?
   adsFinishingDate DateTime?
 
   financesUpdatedById String?

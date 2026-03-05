@@ -25,6 +25,7 @@ interface EditableDetailsCardProps {
   destination: string | null;
   source: string;
   caseStartDate?: string | null;
+  caseEndDate?: string | null;
   adsFinishingDate?: string | null;
   caseDeadline?: string | null;
   onSaved: () => void;
@@ -49,6 +50,7 @@ export function EditableDetailsCard({
   destination,
   source,
   caseStartDate,
+  caseEndDate,
   adsFinishingDate,
   caseDeadline,
   onSaved,
@@ -66,6 +68,7 @@ export function EditableDetailsCard({
   const [dest, setDest] = useState(destination || "");
   const [src, setSrc] = useState(source);
   const [startDate, setStartDate] = useState(caseStartDate ? caseStartDate.slice(0, 10) : "");
+  const [endDate, setEndDate] = useState(caseEndDate ? caseEndDate.slice(0, 10) : "");
   const [adsDate, setAdsDate] = useState(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
   const [deadline, setDeadline] = useState(caseDeadline ? caseDeadline.slice(0, 10) : "");
 
@@ -78,6 +81,7 @@ export function EditableDetailsCard({
     setDest(destination || "");
     setSrc(source);
     setStartDate(caseStartDate ? caseStartDate.slice(0, 10) : "");
+    setEndDate(caseEndDate ? caseEndDate.slice(0, 10) : "");
     setAdsDate(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
     setDeadline(caseDeadline ? caseDeadline.slice(0, 10) : "");
     setEditing(false);
@@ -104,6 +108,8 @@ export function EditableDetailsCard({
       if (src !== source) body.source = src;
       if (startDate !== (caseStartDate ? caseStartDate.slice(0, 10) : ""))
         body.caseStartDate = startDate || null;
+      if (endDate !== (caseEndDate ? caseEndDate.slice(0, 10) : ""))
+        body.caseEndDate = endDate || null;
       if (adsDate !== (adsFinishingDate ? adsFinishingDate.slice(0, 10) : ""))
         body.adsFinishingDate = adsDate || null;
       if (deadline !== (caseDeadline ? caseDeadline.slice(0, 10) : ""))
@@ -195,6 +201,10 @@ export function EditableDetailsCard({
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Case Start Date</span>
               <span className="text-sm text-foreground">{formatDate(caseStartDate)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">Case End Date</span>
+              <span className="text-sm text-foreground">{formatDate(caseEndDate)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">ADS Finishing Date</span>
@@ -291,13 +301,22 @@ export function EditableDetailsCard({
       {/* Date Fields in Edit Mode */}
       <div className="mt-4 border-t border-border pt-4">
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Dates</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Case Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Case End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </div>
