@@ -19,6 +19,7 @@ interface FinancialCardProps {
   ticketId: string;
   ablFee: number | null;
   govFee: number | null;
+  adsFee: number | null;
   adverts: number | null;
   paidAmount: number;
   financesUpdatedBy: { name: string } | null;
@@ -51,6 +52,7 @@ export function FinancialCard({
   ticketId,
   ablFee,
   govFee,
+  adsFee,
   adverts,
   paidAmount,
   financesUpdatedBy,
@@ -61,6 +63,7 @@ export function FinancialCard({
 }: FinancialCardProps) {
   const [ablFeeLocal, setAblFee] = useState(ablFee);
   const [govFeeLocal, setGovFee] = useState(govFee);
+  const [adsFeeLocal, setAdsFee] = useState(adsFee);
   const [advertsLocal, setAdverts] = useState(adverts);
   const [paidLocal, setPaid] = useState(paidAmount);
   const [saving, setSaving] = useState(false);
@@ -80,12 +83,13 @@ export function FinancialCard({
   const [paymentSaving, setPaymentSaving] = useState(false);
 
   const vat = calcVat(ablFeeLocal);
-  const total = calcTotal(ablFeeLocal, govFeeLocal, advertsLocal);
+  const total = calcTotal(ablFeeLocal, govFeeLocal, advertsLocal, adsFeeLocal);
   const due = calcDue(total, paidLocal);
 
   const hasChanges =
     ablFeeLocal !== ablFee ||
     govFeeLocal !== govFee ||
+    adsFeeLocal !== adsFee ||
     advertsLocal !== adverts ||
     paidLocal !== paidAmount;
 
@@ -118,6 +122,7 @@ export function FinancialCard({
       if (canEditFees) {
         if (ablFeeLocal !== ablFee) body.ablFee = ablFeeLocal;
         if (govFeeLocal !== govFee) body.govFee = govFeeLocal;
+        if (adsFeeLocal !== adsFee) body.adsFee = adsFeeLocal;
         if (advertsLocal !== adverts) body.adverts = advertsLocal;
       }
       if (canEditPaidAmount && paidLocal !== paidAmount) {
@@ -249,7 +254,7 @@ export function FinancialCard({
         Financials
       </h2>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {/* ABL Fee (VAT-inclusive) */}
         <div>
           <label className="mb-1 block text-xs font-medium text-muted">ABL Fee <span className="font-normal">(incl. VAT)</span></label>
@@ -291,6 +296,26 @@ export function FinancialCard({
           ) : (
             <p className="py-2 text-sm font-medium text-foreground">
               {govFeeLocal != null ? formatCurrency(govFeeLocal) : "—"}
+            </p>
+          )}
+        </div>
+
+        {/* ADS Fee */}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted">ADS Fee</label>
+          {canEditFees ? (
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={adsFeeLocal ?? ""}
+              onChange={(e) => setAdsFee(parseNum(e.target.value))}
+              placeholder="0.00"
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          ) : (
+            <p className="py-2 text-sm font-medium text-foreground">
+              {adsFeeLocal != null ? formatCurrency(adsFeeLocal) : "—"}
             </p>
           )}
         </div>

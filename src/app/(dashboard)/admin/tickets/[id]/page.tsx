@@ -25,7 +25,9 @@ interface Ticket {
   clientName: string;
   clientEmail: string | null;
   clientPhone: string;
+  gender: string | null;
   nationality: string | null;
+  address: string | null;
   caseType: string | null;
   destination: string | null;
   status: string;
@@ -36,6 +38,7 @@ interface Ticket {
   updatedAt: string;
   ablFee: number | null;
   govFee: number | null;
+  adsFee: number | null;
   adverts: number | null;
   paidAmount: number;
   caseDeadline: string | null;
@@ -58,6 +61,7 @@ export default function AdminTicketDetailPage() {
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState({ text: "", type: "" });
   const [currentUserId, setCurrentUserId] = useState("");
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
 
   const fetchTicket = useCallback(async () => {
     const [res, meRes] = await Promise.all([
@@ -151,9 +155,10 @@ export default function AdminTicketDetailPage() {
             clientName={ticket.clientName}
             clientPhone={ticket.clientPhone}
             clientEmail={ticket.clientEmail}
+            gender={ticket.gender}
             nationality={ticket.nationality}
+            address={ticket.address}
             caseType={ticket.caseType}
-            destination={ticket.destination}
             source={ticket.source}
             caseStartDate={ticket.caseStartDate}
             caseEndDate={ticket.caseEndDate}
@@ -206,6 +211,7 @@ export default function AdminTicketDetailPage() {
             ticketId={id}
             ablFee={ticket.ablFee}
             govFee={ticket.govFee}
+            adsFee={ticket.adsFee}
             adverts={ticket.adverts}
             paidAmount={ticket.paidAmount}
             financesUpdatedBy={ticket.financesUpdatedBy}
@@ -254,19 +260,27 @@ export default function AdminTicketDetailPage() {
           </div>
 
           {/* Danger Zone */}
-          <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">Danger Zone</h2>
-            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">Permanently delete this ticket and all associated data.</p>
+          <div className="rounded-xl border border-red-200 bg-card p-6 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">Danger Zone</h2>
+            <p className="mb-3 text-xs text-red-500">Permanently delete this ticket and all associated data.</p>
+            <label className="mb-3 flex items-start gap-2 text-xs text-foreground">
+              <input
+                type="checkbox"
+                checked={deleteConfirmed}
+                onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+              />
+              <span>I confirm that I want to permanently delete this ticket and all associated data.</span>
+            </label>
             <button
               onClick={async () => {
-                if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
                 setUpdating(true);
                 const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
                 if (res.ok) { router.push("/admin/tickets"); }
                 else { const data = await res.json(); setMessage({ text: data.error || "Failed to delete", type: "error" }); setUpdating(false); }
               }}
-              disabled={updating}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
+              disabled={updating || !deleteConfirmed}
+              className="rounded-lg border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Delete Ticket
             </button>

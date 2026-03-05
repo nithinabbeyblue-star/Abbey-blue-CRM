@@ -4,15 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CaseDropdown } from "@/components/ui/case-dropdown";
 import type { CaseTypeKey } from "@/constants/cases";
-import { calcVat, calcTotal, formatCurrency } from "@/constants/finance";
-
-const SOURCES = [
-  { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "TIKTOK", label: "TikTok" },
-  { value: "WALK_IN", label: "Walk-in" },
-  { value: "REFERRAL", label: "Referral" },
-  { value: "WEBSITE", label: "Website" },
-];
+import { calcVat, calcTotal, calcDue, formatCurrency } from "@/constants/finance";
 
 const PRIORITIES = [
   { value: 0, label: "Normal" },
@@ -29,26 +21,37 @@ export default function NewTicketPage() {
   const [caseType, setCaseType] = useState<CaseTypeKey | null>(null);
   const [ablFee, setAblFee] = useState<number | null>(null);
   const [govFee, setGovFee] = useState<number | null>(null);
+  const [adsFee, setAdsFee] = useState<number | null>(null);
   const [adverts, setAdverts] = useState<number | null>(null);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [attempted, setAttempted] = useState(false);
+
+  const total = calcTotal(ablFee, govFee, adverts, adsFee);
+  const amountDue = calcDue(total, paidAmount);
 
   function validate(formData: FormData): FieldErrors {
     const errors: FieldErrors = {};
     const clientName = (formData.get("clientName") as string)?.trim();
     const clientPhone = (formData.get("clientPhone") as string)?.trim();
     const clientEmail = (formData.get("clientEmail") as string)?.trim();
+    const gender = (formData.get("gender") as string)?.trim();
     const nationality = (formData.get("nationality") as string)?.trim();
-    const destination = (formData.get("destination") as string)?.trim();
+    const address = (formData.get("address") as string)?.trim();
     const caseStartDate = (formData.get("caseStartDate") as string)?.trim();
 
     if (!clientName) errors.clientName = "Full name is required";
     if (!clientPhone) errors.clientPhone = "Phone number is required";
     if (!clientEmail) errors.clientEmail = "Email is required";
+    if (!gender) errors.gender = "Gender is required";
     if (!nationality) errors.nationality = "Nationality is required";
+    if (!address) errors.address = "Address is required";
     if (!caseType) errors.caseType = "Case type is required";
-    if (!destination) errors.destination = "Destination country is required";
     if (!caseStartDate) errors.caseStartDate = "Case start date is required";
+    if (ablFee == null) errors.ablFee = "ABL Fee is required";
+    if (govFee == null) errors.govFee = "Gov Fee is required";
+    if (adsFee == null) errors.adsFee = "ADS Fee is required";
+    if (adverts == null) errors.adverts = "Adverts is required";
 
     return errors;
   }
@@ -74,19 +77,22 @@ export default function NewTicketPage() {
       clientName: (formData.get("clientName") as string).trim(),
       clientEmail: (formData.get("clientEmail") as string).trim(),
       clientPhone: (formData.get("clientPhone") as string).trim(),
+      gender: (formData.get("gender") as string).trim(),
       nationality: (formData.get("nationality") as string).trim(),
+      address: (formData.get("address") as string).trim(),
       caseType: caseType,
-      destination: (formData.get("destination") as string).trim(),
       source: formData.get("source") as string,
       priority: parseInt(formData.get("priority") as string, 10),
       notes: formData.get("notes") as string,
       caseStartDate: (formData.get("caseStartDate") as string).trim(),
+      ablFee,
+      govFee,
+      adsFee,
+      adverts,
+      paidAmount,
     };
     const caseEndDate = (formData.get("caseEndDate") as string)?.trim();
     if (caseEndDate) body.caseEndDate = caseEndDate;
-    if (ablFee != null) body.ablFee = ablFee;
-    if (govFee != null) body.govFee = govFee;
-    if (adverts != null) body.adverts = adverts;
 
     try {
       const res = await fetch("/api/tickets", {
@@ -112,6 +118,13 @@ export default function NewTicketPage() {
   }
 
   const inputClass = (field: string) =>
+    `w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 ${
+      attempted && fieldErrors[field]
+        ? "border-red-400 focus:border-red-500 focus:ring-red-200"
+        : "border-border focus:border-primary focus:ring-primary/20"
+    }`;
+
+  const finInputClass = (field: string) =>
     `w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 ${
       attempted && fieldErrors[field]
         ? "border-red-400 focus:border-red-500 focus:ring-red-200"
@@ -180,6 +193,24 @@ export default function NewTicketPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Gender <span className="text-danger">*</span>
+              </label>
+              <select
+                name="gender"
+                defaultValue=""
+                className={inputClass("gender")}
+              >
+                <option value="" disabled>Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              {attempted && fieldErrors.gender && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.gender}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Nationality <span className="text-danger">*</span>
               </label>
               <input
@@ -189,6 +220,21 @@ export default function NewTicketPage() {
               />
               {attempted && fieldErrors.nationality && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.nationality}</p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Address <span className="text-danger">*</span>
+                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Important</span>
+              </label>
+              <textarea
+                name="address"
+                rows={2}
+                placeholder="Full address including city and postcode"
+                className={inputClass("address")}
+              />
+              {attempted && fieldErrors.address && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.address}</p>
               )}
             </div>
           </div>
@@ -209,19 +255,6 @@ export default function NewTicketPage() {
               </div>
               {attempted && fieldErrors.caseType && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.caseType}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Destination Country <span className="text-danger">*</span>
-              </label>
-              <input
-                name="destination"
-                placeholder="e.g. Ireland"
-                className={inputClass("destination")}
-              />
-              {attempted && fieldErrors.destination && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.destination}</p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -252,14 +285,16 @@ export default function NewTicketPage() {
           </div>
         </div>
 
-        {/* Financials (optional) */}
+        {/* Financials */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-            Financials <span className="font-normal normal-case text-muted">(optional)</span>
+            Financials
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">ABL Fee</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                ABL Fee <span className="text-danger">*</span>
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -267,11 +302,16 @@ export default function NewTicketPage() {
                 value={ablFee ?? ""}
                 onChange={(e) => setAblFee(e.target.value === "" ? null : parseFloat(e.target.value))}
                 placeholder="0.00"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={finInputClass("ablFee")}
               />
+              {attempted && fieldErrors.ablFee && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.ablFee}</p>
+              )}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Gov Fee</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Gov Fee <span className="text-danger">*</span>
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -279,11 +319,33 @@ export default function NewTicketPage() {
                 value={govFee ?? ""}
                 onChange={(e) => setGovFee(e.target.value === "" ? null : parseFloat(e.target.value))}
                 placeholder="0.00"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={finInputClass("govFee")}
               />
+              {attempted && fieldErrors.govFee && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.govFee}</p>
+              )}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Adverts</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                ADS Fee <span className="text-danger">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={adsFee ?? ""}
+                onChange={(e) => setAdsFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                placeholder="0.00"
+                className={finInputClass("adsFee")}
+              />
+              {attempted && fieldErrors.adsFee && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.adsFee}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Adverts <span className="text-danger">*</span>
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -291,19 +353,46 @@ export default function NewTicketPage() {
                 value={adverts ?? ""}
                 onChange={(e) => setAdverts(e.target.value === "" ? null : parseFloat(e.target.value))}
                 placeholder="0.00"
+                className={finInputClass("adverts")}
+              />
+              {attempted && fieldErrors.adverts && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.adverts}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Amount Paid
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
                 className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
-          {/* Live preview */}
-          {(ablFee != null || govFee != null || adverts != null) && (
-            <div className="mt-4 flex items-center gap-4 rounded-lg bg-gray-50 px-4 py-3 text-sm">
-              {ablFee != null && ablFee > 0 && (
-                <span className="text-muted">VAT in ABL: <span className="font-medium text-foreground">{formatCurrency(calcVat(ablFee))}</span></span>
-              )}
-              <span className="text-muted">Total: <span className="font-bold text-foreground">{formatCurrency(calcTotal(ablFee, govFee, adverts))}</span></span>
+          {/* Live summary */}
+          <div className="mt-4 space-y-2 rounded-lg border border-border bg-gray-50 px-4 py-3 text-sm">
+            {ablFee != null && ablFee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted">VAT in ABL (23%)</span>
+                <span className="font-medium text-foreground">{formatCurrency(calcVat(ablFee))}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted">Total Amount</span>
+              <span className="font-bold text-foreground">{formatCurrency(total)}</span>
             </div>
-          )}
+            <div className="flex justify-between border-t border-border pt-2">
+              <span className="font-medium text-muted">Amount Due</span>
+              <span className={`text-lg font-bold ${amountDue > 0 ? "text-red-600" : "text-green-600"}`}>
+                {formatCurrency(amountDue)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Lead Info */}
@@ -314,7 +403,7 @@ export default function NewTicketPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Lead Source <span className="text-danger">*</span>
+                Contacted By <span className="text-danger">*</span>
               </label>
               <select
                 name="source"
@@ -322,11 +411,16 @@ export default function NewTicketPage() {
                 defaultValue="WHATSAPP"
                 className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
-                {SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
+                <optgroup label="Social Media">
+                  <option value="WHATSAPP">WhatsApp</option>
+                  <option value="TIKTOK">TikTok</option>
+                </optgroup>
+                <optgroup label="Direct">
+                  <option value="WALK_IN">Walk-in</option>
+                  <option value="LANDLINE">Landline</option>
+                  <option value="REFERRAL">Referral</option>
+                  <option value="WEBSITE">Website</option>
+                </optgroup>
               </select>
             </div>
             <div>

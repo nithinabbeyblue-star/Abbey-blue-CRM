@@ -61,6 +61,7 @@ enum LeadSource {
   REFERRAL
   WEBSITE
   WEBHOOK
+  LANDLINE
 }
 
 enum DocumentType {
@@ -142,7 +143,9 @@ model Ticket {
   clientName  String
   clientEmail String?
   clientPhone String
+  gender      String?
   nationality String?
+  address     String?
   caseType    CaseType?
   destination String?
   status      TicketStatus @default(LEAD)
@@ -153,6 +156,7 @@ model Ticket {
   // Financial
   ablFee       Float?
   govFee       Float?
+  adsFee       Float?
   adverts      Float?
   paidAmount   Float      @default(0)
   caseDeadline     DateTime?

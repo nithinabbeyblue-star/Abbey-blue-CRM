@@ -19,7 +19,7 @@ const VALID_STATUSES = [
 ] as const;
 
 const VALID_SOURCES = [
-  "WHATSAPP", "TIKTOK", "WALK_IN", "REFERRAL", "WEBSITE", "WEBHOOK",
+  "WHATSAPP", "TIKTOK", "WALK_IN", "REFERRAL", "WEBSITE", "WEBHOOK", "LANDLINE",
 ] as const;
 
 const updateTicketSchema = z.object({
@@ -30,13 +30,16 @@ const updateTicketSchema = z.object({
   clientName: z.string().min(1).optional(),
   clientEmail: z.string().email().optional().or(z.literal("")).nullable(),
   clientPhone: z.string().min(1).optional(),
+  gender: z.enum(["Male", "Female", "Other"]).optional().nullable(),
   nationality: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
   caseType: z.nativeEnum(CaseType).optional().nullable(),
   destination: z.string().optional().nullable(),
   source: z.enum(VALID_SOURCES).optional(),
   // Financial fields
   ablFee: z.number().min(0).nullable().optional(),
   govFee: z.number().min(0).nullable().optional(),
+  adsFee: z.number().min(0).nullable().optional(),
   adverts: z.number().min(0).nullable().optional(),
   paidAmount: z.number().min(0).optional(),
   caseDeadline: z.string().nullable().optional(),
@@ -166,7 +169,7 @@ export async function PATCH(
     }
 
     // Client & case detail fields
-    const detailFields = ["clientName", "clientPhone", "clientEmail", "nationality", "caseType", "destination", "source"] as const;
+    const detailFields = ["clientName", "clientPhone", "clientEmail", "gender", "nationality", "address", "caseType", "destination", "source"] as const;
     for (const field of detailFields) {
       if (data[field] !== undefined) {
         const oldVal = ticket[field];
@@ -185,7 +188,7 @@ export async function PATCH(
 
     // Financial fields
     let hasFinancialChange = false;
-    const finFields = ["ablFee", "govFee", "adverts", "paidAmount"] as const;
+    const finFields = ["ablFee", "govFee", "adsFee", "adverts", "paidAmount"] as const;
     for (const field of finFields) {
       if (data[field] !== undefined && data[field] !== ticket[field]) {
         auditEntries.push({

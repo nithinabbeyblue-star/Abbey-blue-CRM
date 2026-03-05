@@ -11,9 +11,11 @@ const createTicketSchema = z.object({
   clientName: z.string().min(1, "Client name is required"),
   clientEmail: z.string().min(1, "Email is required").email("Invalid email address"),
   clientPhone: z.string().min(1, "Phone number is required"),
+  gender: z.enum(["Male", "Female", "Other"]).optional().nullable(),
   nationality: z.string().min(1, "Nationality is required"),
+  address: z.string().min(1, "Address is required"),
   caseType: z.nativeEnum(CaseType, { error: "Case type is required" }),
-  destination: z.string().min(1, "Destination country is required"),
+  destination: z.string().optional().nullable(),
   source: z.enum([
     "WHATSAPP",
     "TIKTOK",
@@ -21,12 +23,14 @@ const createTicketSchema = z.object({
     "REFERRAL",
     "WEBSITE",
     "WEBHOOK",
+    "LANDLINE",
   ]),
   priority: z.number().min(0).max(2).optional(),
   notes: z.string().optional().or(z.literal("")),
-  // Financial fields (optional at creation)
+  // Financial fields
   ablFee: z.number().min(0).nullable().optional(),
   govFee: z.number().min(0).nullable().optional(),
+  adsFee: z.number().min(0).nullable().optional(),
   adverts: z.number().min(0).nullable().optional(),
   caseDeadline: z.string().nullable().optional(),
   caseStartDate: z.string().min(1, "Case start date is required"),
@@ -49,7 +53,9 @@ export async function POST(request: NextRequest) {
         clientName: data.clientName,
         clientEmail: data.clientEmail || null,
         clientPhone: data.clientPhone,
+        gender: data.gender || null,
         nationality: data.nationality || null,
+        address: data.address || null,
         caseType: data.caseType || null,
         destination: data.destination || null,
         source: data.source,
@@ -58,11 +64,12 @@ export async function POST(request: NextRequest) {
         createdById: user.userId,
         ablFee: data.ablFee ?? null,
         govFee: data.govFee ?? null,
+        adsFee: data.adsFee ?? null,
         adverts: data.adverts ?? null,
         caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
         caseStartDate: data.caseStartDate ? new Date(data.caseStartDate) : null,
         caseEndDate: data.caseEndDate ? new Date(data.caseEndDate) : null,
-        ...(data.ablFee != null || data.govFee != null || data.adverts != null
+        ...(data.ablFee != null || data.govFee != null || data.adsFee != null || data.adverts != null
           ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
           : {}),
       },

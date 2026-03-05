@@ -6,23 +6,15 @@ import { CaseBadge } from "@/components/ui/case-badge";
 import { AdsBadge } from "@/components/ui/ads-badge";
 import type { CaseTypeKey } from "@/constants/cases";
 
-const SOURCES = [
-  { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "TIKTOK", label: "TikTok" },
-  { value: "WALK_IN", label: "Walk-in" },
-  { value: "REFERRAL", label: "Referral" },
-  { value: "WEBSITE", label: "Website" },
-  { value: "WEBHOOK", label: "Webhook" },
-];
-
 interface EditableDetailsCardProps {
   ticketId: string;
   clientName: string;
   clientPhone: string;
   clientEmail: string | null;
+  gender: string | null;
   nationality: string | null;
+  address: string | null;
   caseType: string | null;
-  destination: string | null;
   source: string;
   caseStartDate?: string | null;
   caseEndDate?: string | null;
@@ -40,14 +32,25 @@ function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  WHATSAPP: "WhatsApp",
+  TIKTOK: "TikTok",
+  WALK_IN: "Walk-in",
+  REFERRAL: "Referral",
+  WEBSITE: "Website",
+  WEBHOOK: "Webhook",
+  LANDLINE: "Landline",
+};
+
 export function EditableDetailsCard({
   ticketId,
   clientName,
   clientPhone,
   clientEmail,
+  gender,
   nationality,
+  address,
   caseType,
-  destination,
   source,
   caseStartDate,
   caseEndDate,
@@ -63,9 +66,10 @@ export function EditableDetailsCard({
   const [name, setName] = useState(clientName);
   const [phone, setPhone] = useState(clientPhone);
   const [email, setEmail] = useState(clientEmail || "");
+  const [gen, setGen] = useState(gender || "");
   const [nat, setNat] = useState(nationality || "");
+  const [addr, setAddr] = useState(address || "");
   const [ct, setCt] = useState<CaseTypeKey | null>(caseType as CaseTypeKey | null);
-  const [dest, setDest] = useState(destination || "");
   const [src, setSrc] = useState(source);
   const [startDate, setStartDate] = useState(caseStartDate ? caseStartDate.slice(0, 10) : "");
   const [endDate, setEndDate] = useState(caseEndDate ? caseEndDate.slice(0, 10) : "");
@@ -76,9 +80,10 @@ export function EditableDetailsCard({
     setName(clientName);
     setPhone(clientPhone);
     setEmail(clientEmail || "");
+    setGen(gender || "");
     setNat(nationality || "");
+    setAddr(address || "");
     setCt(caseType as CaseTypeKey | null);
-    setDest(destination || "");
     setSrc(source);
     setStartDate(caseStartDate ? caseStartDate.slice(0, 10) : "");
     setEndDate(caseEndDate ? caseEndDate.slice(0, 10) : "");
@@ -102,9 +107,10 @@ export function EditableDetailsCard({
       if (name !== clientName) body.clientName = name;
       if (phone !== clientPhone) body.clientPhone = phone;
       if (email !== (clientEmail || "")) body.clientEmail = email || null;
+      if (gen !== (gender || "")) body.gender = gen || null;
       if (nat !== (nationality || "")) body.nationality = nat || null;
+      if (addr !== (address || "")) body.address = addr || null;
       if (ct !== caseType) body.caseType = ct;
-      if (dest !== (destination || "")) body.destination = dest || null;
       if (src !== source) body.source = src;
       if (startDate !== (caseStartDate ? caseStartDate.slice(0, 10) : ""))
         body.caseStartDate = startDate || null;
@@ -175,8 +181,16 @@ export function EditableDetailsCard({
             <dd className="mt-1 text-foreground">{clientEmail || "—"}</dd>
           </div>
           <div>
+            <dt className="text-xs font-medium text-muted">Gender</dt>
+            <dd className="mt-1 text-foreground">{gender || "—"}</dd>
+          </div>
+          <div>
             <dt className="text-xs font-medium text-muted">Nationality</dt>
             <dd className="mt-1 text-foreground">{nationality || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted">Contacted By</dt>
+            <dd className="mt-1 text-foreground">{SOURCE_LABELS[source] || source.replace(/_/g, " ")}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-muted">Case Type</dt>
@@ -185,15 +199,24 @@ export function EditableDetailsCard({
               {!caseType && "—"}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs font-medium text-muted">Destination</dt>
-            <dd className="mt-1 text-foreground">{destination || "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-muted">Source</dt>
-            <dd className="mt-1 text-foreground">{source.replace(/_/g, " ")}</dd>
-          </div>
         </dl>
+
+        {/* Address — prominent */}
+        {address && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <dt className="text-xs font-medium text-amber-700">
+              Address
+              <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">Important</span>
+            </dt>
+            <dd className="mt-1 text-sm text-foreground">{address}</dd>
+          </div>
+        )}
+        {!address && (
+          <div className="mt-4">
+            <dt className="text-xs font-medium text-muted">Address</dt>
+            <dd className="mt-1 text-sm text-muted">—</dd>
+          </div>
+        )}
 
         {/* Date Fields */}
         <div className="mt-4 border-t border-border pt-4">
@@ -265,6 +288,19 @@ export function EditableDetailsCard({
           />
         </div>
         <div>
+          <label className="mb-1 block text-xs font-medium text-muted">Gender</label>
+          <select
+            value={gen}
+            onChange={(e) => setGen(e.target.value)}
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="">Select gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-muted">Nationality</label>
           <input
             value={nat}
@@ -277,24 +313,37 @@ export function EditableDetailsCard({
           <CaseDropdown value={ct} onChange={setCt} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Destination</label>
-          <input
-            value={dest}
-            onChange={(e) => setDest(e.target.value)}
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Source</label>
+          <label className="mb-1 block text-xs font-medium text-muted">Contacted By</label>
           <select
             value={src}
             onChange={(e) => setSrc(e.target.value)}
             className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
           >
-            {SOURCES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            <optgroup label="Social Media">
+              <option value="WHATSAPP">WhatsApp</option>
+              <option value="TIKTOK">TikTok</option>
+            </optgroup>
+            <optgroup label="Direct">
+              <option value="WALK_IN">Walk-in</option>
+              <option value="LANDLINE">Landline</option>
+              <option value="REFERRAL">Referral</option>
+              <option value="WEBSITE">Website</option>
+              <option value="WEBHOOK">Webhook</option>
+            </optgroup>
           </select>
+        </div>
+        <div className="col-span-2">
+          <label className="mb-1 block text-xs font-medium text-muted">
+            Address
+            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Important</span>
+          </label>
+          <textarea
+            rows={2}
+            value={addr}
+            onChange={(e) => setAddr(e.target.value)}
+            placeholder="Full address including city and postcode"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          />
         </div>
       </div>
 
