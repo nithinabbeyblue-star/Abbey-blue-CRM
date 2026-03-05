@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CaseDropdown } from "@/components/ui/case-dropdown";
 import { CaseBadge } from "@/components/ui/case-badge";
+import { AdsBadge } from "@/components/ui/ads-badge";
 import type { CaseTypeKey } from "@/constants/cases";
 
 const SOURCES = [
@@ -23,7 +24,19 @@ interface EditableDetailsCardProps {
   caseType: string | null;
   destination: string | null;
   source: string;
+  caseStartDate?: string | null;
+  adsFinishingDate?: string | null;
+  caseDeadline?: string | null;
   onSaved: () => void;
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function EditableDetailsCard({
@@ -35,6 +48,9 @@ export function EditableDetailsCard({
   caseType,
   destination,
   source,
+  caseStartDate,
+  adsFinishingDate,
+  caseDeadline,
   onSaved,
 }: EditableDetailsCardProps) {
   const [editing, setEditing] = useState(false);
@@ -49,6 +65,9 @@ export function EditableDetailsCard({
   const [ct, setCt] = useState<CaseTypeKey | null>(caseType as CaseTypeKey | null);
   const [dest, setDest] = useState(destination || "");
   const [src, setSrc] = useState(source);
+  const [startDate, setStartDate] = useState(caseStartDate ? caseStartDate.slice(0, 10) : "");
+  const [adsDate, setAdsDate] = useState(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
+  const [deadline, setDeadline] = useState(caseDeadline ? caseDeadline.slice(0, 10) : "");
 
   function handleCancel() {
     setName(clientName);
@@ -58,6 +77,9 @@ export function EditableDetailsCard({
     setCt(caseType as CaseTypeKey | null);
     setDest(destination || "");
     setSrc(source);
+    setStartDate(caseStartDate ? caseStartDate.slice(0, 10) : "");
+    setAdsDate(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
+    setDeadline(caseDeadline ? caseDeadline.slice(0, 10) : "");
     setEditing(false);
     setMessage({ text: "", type: "" });
   }
@@ -80,6 +102,12 @@ export function EditableDetailsCard({
       if (ct !== caseType) body.caseType = ct;
       if (dest !== (destination || "")) body.destination = dest || null;
       if (src !== source) body.source = src;
+      if (startDate !== (caseStartDate ? caseStartDate.slice(0, 10) : ""))
+        body.caseStartDate = startDate || null;
+      if (adsDate !== (adsFinishingDate ? adsFinishingDate.slice(0, 10) : ""))
+        body.adsFinishingDate = adsDate || null;
+      if (deadline !== (caseDeadline ? caseDeadline.slice(0, 10) : ""))
+        body.caseDeadline = deadline || null;
 
       if (Object.keys(body).length === 0) {
         setEditing(false);
@@ -160,6 +188,27 @@ export function EditableDetailsCard({
             <dd className="mt-1 text-foreground">{source.replace(/_/g, " ")}</dd>
           </div>
         </dl>
+
+        {/* Date Fields */}
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">Case Start Date</span>
+              <span className="text-sm text-foreground">{formatDate(caseStartDate)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">ADS Finishing Date</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-foreground">{formatDate(adsFinishingDate)}</span>
+                <AdsBadge adsFinishingDate={adsFinishingDate ?? null} />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">Case Deadline</span>
+              <span className="text-sm text-foreground">{formatDate(caseDeadline)}</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -238,6 +287,46 @@ export function EditableDetailsCard({
           </select>
         </div>
       </div>
+
+      {/* Date Fields in Edit Mode */}
+      <div className="mt-4 border-t border-border pt-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Dates</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Case Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">ADS Finishing Date</label>
+            <input
+              type="date"
+              value={adsDate}
+              onChange={(e) => setAdsDate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            {adsDate && (
+              <div className="mt-1">
+                <AdsBadge adsFinishingDate={adsDate} />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Case Deadline</label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 flex gap-2">
         <button
           onClick={handleSave}

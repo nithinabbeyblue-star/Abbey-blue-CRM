@@ -101,7 +101,7 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div>
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -114,113 +114,122 @@ export default function TicketDetailPage() {
         backHref="/sales/tickets"
       />
 
-      {/* Editable Client & Case Details */}
-      <EditableDetailsCard
-        ticketId={id}
-        clientName={ticket.clientName}
-        clientPhone={ticket.clientPhone}
-        clientEmail={ticket.clientEmail}
-        nationality={ticket.nationality}
-        caseType={ticket.caseType}
-        destination={ticket.destination}
-        source={ticket.source}
-        onSaved={fetchTicket}
-      />
-
-      {/* Case History */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Case History</h2>
-        {ticket.auditLogs.length === 0 ? (
-          <p className="text-sm text-muted">No activity recorded yet.</p>
-        ) : (
-          <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
-            {ticket.auditLogs.map((log) => (
-              <div key={log.id} className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
-                <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">{log.user.name}</span>{" "}
-                    {log.action.replace(/_/g, " ").toLowerCase()}
-                    {log.oldValue && log.newValue && (
-                      <>
-                        {" "}from <span className="font-medium">{log.oldValue.replace(/_/g, " ")}</span>{" "}
-                        to <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span>
-                      </>
-                    )}
-                    {!log.oldValue && log.newValue && (
-                      <> &mdash; <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {new Date(log.createdAt).toLocaleDateString("en-GB", {
-                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Notes */}
-      {ticket.notes && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Notes</h2>
-          <p className="whitespace-pre-wrap text-sm text-foreground">{ticket.notes}</p>
+      {/* Fixed Chat Sidebar */}
+      {currentUserId && (
+        <div className="hidden lg:block fixed top-0 right-0 h-screen w-[400px] border-l border-border bg-card p-2 z-40">
+          <ChatPanel ticketId={id} currentUserId={currentUserId} />
         </div>
       )}
 
-      {/* Financials */}
-      <FinancialCard
-        ticketId={ticket.id}
-        ablFee={ticket.ablFee}
-        govFee={ticket.govFee}
-        adverts={ticket.adverts}
-        paidAmount={ticket.paidAmount}
-        caseDeadline={ticket.caseDeadline}
-        caseStartDate={ticket.caseStartDate}
-        adsFinishingDate={ticket.adsFinishingDate}
-        financesUpdatedBy={ticket.financesUpdatedBy}
-        financesUpdatedAt={ticket.financesUpdatedAt}
-        canEditFees={ticket.status === "LEAD"}
-        canEditPaidAmount={true}
-        canEditDeadline={true}
-        canManagePayments={true}
-      />
+      <div className={currentUserId ? "lg:mr-[400px]" : ""}>
+        <div className="space-y-4">
+          <EditableDetailsCard
+            ticketId={id}
+            clientName={ticket.clientName}
+            clientPhone={ticket.clientPhone}
+            clientEmail={ticket.clientEmail}
+            nationality={ticket.nationality}
+            caseType={ticket.caseType}
+            destination={ticket.destination}
+            source={ticket.source}
+            caseStartDate={ticket.caseStartDate}
+            adsFinishingDate={ticket.adsFinishingDate}
+            caseDeadline={ticket.caseDeadline}
+            onSaved={fetchTicket}
+          />
 
-      {/* Case Chat */}
-      {currentUserId && (
-        <ChatPanel ticketId={id} currentUserId={currentUserId} />
-      )}
+          {ticket.notes && (
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Notes</h2>
+              <p className="whitespace-pre-wrap text-sm text-foreground">{ticket.notes}</p>
+            </div>
+          )}
 
-      {/* Danger Zone */}
-      <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
-          Danger Zone
-        </h2>
-        <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
-          Permanently delete this ticket and all associated data (documents, chat, audit logs).
-        </p>
-        <button
-          onClick={async () => {
-            if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
-            setDeleting(true);
-            const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
-            if (res.ok) {
-              router.push("/sales/tickets");
-            } else {
-              const data = await res.json();
-              alert(data.error || "Failed to delete");
-              setDeleting(false);
-            }
-          }}
-          disabled={deleting}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
-        >
-          {deleting ? "Deleting..." : "Delete Ticket"}
-        </button>
+          <FinancialCard
+            ticketId={ticket.id}
+            ablFee={ticket.ablFee}
+            govFee={ticket.govFee}
+            adverts={ticket.adverts}
+            paidAmount={ticket.paidAmount}
+            financesUpdatedBy={ticket.financesUpdatedBy}
+            financesUpdatedAt={ticket.financesUpdatedAt}
+            canEditFees={ticket.status === "LEAD"}
+            canEditPaidAmount={true}
+            canManagePayments={true}
+          />
+
+          {/* Case History */}
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Case History</h2>
+            {ticket.auditLogs.length === 0 ? (
+              <p className="text-sm text-muted">No activity recorded yet.</p>
+            ) : (
+              <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
+                {ticket.auditLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                    <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground">
+                        <span className="font-medium">{log.user.name}</span>{" "}
+                        {log.action.replace(/_/g, " ").toLowerCase()}
+                        {log.oldValue && log.newValue && (
+                          <>
+                            {" "}from <span className="font-medium">{log.oldValue.replace(/_/g, " ")}</span>{" "}
+                            to <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span>
+                          </>
+                        )}
+                        {!log.oldValue && log.newValue && (
+                          <> &mdash; <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>
+                        )}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {new Date(log.createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Danger Zone */}
+          <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
+              Danger Zone
+            </h2>
+            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
+              Permanently delete this ticket and all associated data.
+            </p>
+            <button
+              onClick={async () => {
+                if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
+                setDeleting(true);
+                const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                  router.push("/sales/tickets");
+                } else {
+                  const data = await res.json();
+                  alert(data.error || "Failed to delete");
+                  setDeleting(false);
+                }
+              }}
+              disabled={deleting}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete Ticket"}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Mobile Chat */}
+      {currentUserId && (
+        <div className="mt-4 lg:hidden">
+          <ChatPanel ticketId={id} currentUserId={currentUserId} />
+        </div>
+      )}
     </div>
   );
 }

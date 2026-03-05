@@ -289,7 +289,7 @@ export function ChatPanel({
   let lastDate = "";
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
@@ -314,7 +314,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="h-80 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-xs text-muted">No messages yet. Start the conversation!</p>
