@@ -79,21 +79,14 @@ export default function TicketDetailPage() {
   }, [fetchTicket]);
 
   if (loading) {
-    return (
-      <div className="py-16 text-center text-sm text-muted">
-        Loading ticket...
-      </div>
-    );
+    return <div className="py-16 text-center text-sm text-muted">Loading ticket...</div>;
   }
 
   if (error || !ticket) {
     return (
       <div className="py-16 text-center">
         <p className="text-sm text-danger">{error || "Ticket not found"}</p>
-        <Link
-          href="/sales/tickets"
-          className="mt-2 inline-block text-sm text-primary hover:underline"
-        >
+        <Link href="/sales/tickets" className="mt-2 inline-block text-sm text-primary hover:underline">
           Back to tickets
         </Link>
       </div>
@@ -101,7 +94,7 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div>
+    <div className="-m-8 flex h-screen flex-col overflow-hidden">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -109,20 +102,15 @@ export default function TicketDetailPage() {
         status={ticket.status}
         caseOwner={ticket.createdBy}
         caseWorker={ticket.assignedTo}
+        createdAt={ticket.createdAt}
         caseDeadline={ticket.caseDeadline}
         adsFinishingDate={ticket.adsFinishingDate}
         backHref="/sales/tickets"
       />
 
-      {/* Fixed Chat Sidebar */}
-      {currentUserId && (
-        <div className="hidden lg:block fixed top-0 right-0 h-screen w-[400px] border-l border-border bg-card p-2 z-40">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
-        </div>
-      )}
-
-      <div className={currentUserId ? "lg:mr-[400px]" : ""}>
-        <div className="space-y-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_400px]">
+        {/* Left — Scrollable content */}
+        <div className="min-w-0 space-y-4 overflow-y-auto px-8 py-6">
           <EditableDetailsCard
             ticketId={id}
             clientName={ticket.clientName}
@@ -221,15 +209,22 @@ export default function TicketDetailPage() {
               {deleting ? "Deleting..." : "Delete Ticket"}
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Mobile Chat */}
-      {currentUserId && (
-        <div className="mt-4 lg:hidden">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          {/* Mobile Chat */}
+          {currentUserId && (
+            <div className="lg:hidden">
+              <ChatPanel ticketId={id} currentUserId={currentUserId} />
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right — Full-height chat */}
+        {currentUserId && (
+          <div className="hidden border-l border-border lg:flex lg:flex-col">
+            <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

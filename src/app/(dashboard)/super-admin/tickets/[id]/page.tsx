@@ -70,18 +70,9 @@ export default function SuperAdminTicketDetailPage() {
       fetch("/api/users/admins"),
       fetch("/api/auth/me"),
     ]);
-    if (ticketRes.ok) {
-      const data = await ticketRes.json();
-      setTicket(data.ticket);
-    }
-    if (adminsRes.ok) {
-      const data = await adminsRes.json();
-      setAdmins(data.admins || []);
-    }
-    if (meRes.ok) {
-      const meData = await meRes.json();
-      setCurrentUserId(meData.user?.userId || "");
-    }
+    if (ticketRes.ok) { const data = await ticketRes.json(); setTicket(data.ticket); }
+    if (adminsRes.ok) { const data = await adminsRes.json(); setAdmins(data.admins || []); }
+    if (meRes.ok) { const meData = await meRes.json(); setCurrentUserId(meData.user?.userId || ""); }
     setLoading(false);
   }, [id]);
 
@@ -96,13 +87,8 @@ export default function SuperAdminTicketDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) {
-      setMessage({ text: `Status updated to ${getStatusLabel(newStatus)}`, type: "success" });
-      await fetchTicket();
-    } else {
-      const data = await res.json();
-      setMessage({ text: data.error || "Failed", type: "error" });
-    }
+    if (res.ok) { setMessage({ text: `Status updated to ${getStatusLabel(newStatus)}`, type: "success" }); await fetchTicket(); }
+    else { const data = await res.json(); setMessage({ text: data.error || "Failed", type: "error" }); }
     setUpdating(false);
   }
 
@@ -114,13 +100,8 @@ export default function SuperAdminTicketDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignedToId: adminId }),
     });
-    if (res.ok) {
-      setMessage({ text: "Ticket reassigned", type: "success" });
-      await fetchTicket();
-    } else {
-      const data = await res.json();
-      setMessage({ text: data.error || "Failed", type: "error" });
-    }
+    if (res.ok) { setMessage({ text: "Ticket reassigned", type: "success" }); await fetchTicket(); }
+    else { const data = await res.json(); setMessage({ text: data.error || "Failed", type: "error" }); }
     setUpdating(false);
   }
 
@@ -128,13 +109,8 @@ export default function SuperAdminTicketDetailPage() {
     if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
     setUpdating(true);
     const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      router.push("/super-admin/tickets");
-    } else {
-      const data = await res.json();
-      setMessage({ text: data.error || "Failed to delete", type: "error" });
-      setUpdating(false);
-    }
+    if (res.ok) { router.push("/super-admin/tickets"); }
+    else { const data = await res.json(); setMessage({ text: data.error || "Failed to delete", type: "error" }); setUpdating(false); }
   }
 
   if (loading) return <div className="py-16 text-center text-sm text-muted">Loading...</div>;
@@ -146,7 +122,7 @@ export default function SuperAdminTicketDetailPage() {
   );
 
   return (
-    <div>
+    <div className="-m-8 flex h-screen flex-col overflow-hidden">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -154,26 +130,20 @@ export default function SuperAdminTicketDetailPage() {
         status={ticket.status}
         caseOwner={ticket.createdBy}
         caseWorker={ticket.assignedTo}
+        createdAt={ticket.createdAt}
         caseDeadline={ticket.caseDeadline}
         adsFinishingDate={ticket.adsFinishingDate}
         backHref="/super-admin/tickets"
       />
 
-      {message.text && (
-        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
-          {message.text}
-        </div>
-      )}
-
-      {/* Fixed Chat Sidebar */}
-      {currentUserId && (
-        <div className="hidden lg:block fixed top-0 right-0 h-screen w-[400px] border-l border-border bg-card p-2 z-40">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
-        </div>
-      )}
-
-      <div className={currentUserId ? "lg:mr-[400px]" : ""}>
-        <div className="space-y-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_400px]">
+        {/* Left — Scrollable content */}
+        <div className="min-w-0 space-y-4 overflow-y-auto px-8 py-6">
+          {message.text && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+              {message.text}
+            </div>
+          )}
           <EditableDetailsCard
             ticketId={id}
             clientName={ticket.clientName}
@@ -281,12 +251,8 @@ export default function SuperAdminTicketDetailPage() {
 
           {/* Danger Zone */}
           <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
-              Danger Zone
-            </h2>
-            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
-              Permanently delete this ticket and all associated data (documents, chat, audit logs).
-            </p>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">Danger Zone</h2>
+            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">Permanently delete this ticket and all associated data.</p>
             <button
               onClick={handleDelete}
               disabled={updating}
@@ -295,15 +261,22 @@ export default function SuperAdminTicketDetailPage() {
               Delete Ticket
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Mobile Chat */}
-      {currentUserId && (
-        <div className="mt-4 lg:hidden">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          {/* Mobile Chat */}
+          {currentUserId && (
+            <div className="lg:hidden">
+              <ChatPanel ticketId={id} currentUserId={currentUserId} />
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right — Full-height chat */}
+        {currentUserId && (
+          <div className="hidden border-l border-border lg:flex lg:flex-col">
+            <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

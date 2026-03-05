@@ -63,10 +63,7 @@ export default function AdminTicketDetailPage() {
       fetch(`/api/tickets/${id}`),
       fetch("/api/auth/me"),
     ]);
-    if (!res.ok) {
-      setLoading(false);
-      return;
-    }
+    if (!res.ok) { setLoading(false); return; }
     const data = await res.json();
     setTicket(data.ticket);
     setNotes(data.ticket.notes || "");
@@ -77,21 +74,17 @@ export default function AdminTicketDetailPage() {
     setLoading(false);
   }, [id]);
 
-  useEffect(() => {
-    fetchTicket();
-  }, [fetchTicket]);
+  useEffect(() => { fetchTicket(); }, [fetchTicket]);
 
   async function handleStatusChange(newStatus: string) {
     if (!ticket || newStatus === ticket.status) return;
     setUpdating(true);
     setMessage({ text: "", type: "" });
-
     const res = await fetch(`/api/tickets/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-
     if (res.ok) {
       setMessage({ text: `Status updated to ${getStatusLabel(newStatus)}`, type: "success" });
       await fetchTicket();
@@ -105,13 +98,11 @@ export default function AdminTicketDetailPage() {
   async function handleSaveNotes() {
     setUpdating(true);
     setMessage({ text: "", type: "" });
-
     const res = await fetch(`/api/tickets/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes }),
     });
-
     if (res.ok) {
       setMessage({ text: "Notes saved", type: "success" });
       await fetchTicket();
@@ -121,23 +112,18 @@ export default function AdminTicketDetailPage() {
     setUpdating(false);
   }
 
-  if (loading) {
-    return <div className="py-16 text-center text-sm text-muted">Loading ticket...</div>;
-  }
-
+  if (loading) return <div className="py-16 text-center text-sm text-muted">Loading ticket...</div>;
   if (!ticket) {
     return (
       <div className="py-16 text-center">
         <p className="text-sm text-danger">Ticket not found</p>
-        <Link href="/admin/tickets" className="mt-2 inline-block text-sm text-primary hover:underline">
-          Back to tickets
-        </Link>
+        <Link href="/admin/tickets" className="mt-2 inline-block text-sm text-primary hover:underline">Back to tickets</Link>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="-m-8 flex h-screen flex-col overflow-hidden">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -145,26 +131,20 @@ export default function AdminTicketDetailPage() {
         status={ticket.status}
         caseOwner={ticket.createdBy}
         caseWorker={ticket.assignedTo}
+        createdAt={ticket.createdAt}
         caseDeadline={ticket.caseDeadline}
         adsFinishingDate={ticket.adsFinishingDate}
         backHref="/admin/tickets"
       />
 
-      {message.text && (
-        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
-          {message.text}
-        </div>
-      )}
-
-      {/* Fixed Chat Sidebar */}
-      {currentUserId && (
-        <div className="hidden lg:block fixed top-0 right-0 h-screen w-[400px] border-l border-border bg-card p-2 z-40">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
-        </div>
-      )}
-
-      <div className={currentUserId ? "lg:mr-[400px]" : ""}>
-        <div className="space-y-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_400px]">
+        {/* Left — Scrollable content */}
+        <div className="min-w-0 space-y-4 overflow-y-auto px-8 py-6">
+          {message.text && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+              {message.text}
+            </div>
+          )}
           <EditableDetailsCard
             ticketId={id}
             clientName={ticket.clientName}
@@ -195,8 +175,7 @@ export default function AdminTicketDetailPage() {
                       : "border border-border text-foreground hover:bg-gray-50 disabled:opacity-50"
                   }`}
                 >
-                  {getStatusLabel(s)}
-                  {s === ticket.status && " (Current)"}
+                  {getStatusLabel(s)}{s === ticket.status && " (Current)"}
                 </button>
               ))}
             </div>
@@ -274,24 +253,15 @@ export default function AdminTicketDetailPage() {
 
           {/* Danger Zone */}
           <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
-              Danger Zone
-            </h2>
-            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
-              Permanently delete this ticket and all associated data.
-            </p>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">Danger Zone</h2>
+            <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">Permanently delete this ticket and all associated data.</p>
             <button
               onClick={async () => {
                 if (!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) return;
                 setUpdating(true);
                 const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
-                if (res.ok) {
-                  router.push("/admin/tickets");
-                } else {
-                  const data = await res.json();
-                  setMessage({ text: data.error || "Failed to delete", type: "error" });
-                  setUpdating(false);
-                }
+                if (res.ok) { router.push("/admin/tickets"); }
+                else { const data = await res.json(); setMessage({ text: data.error || "Failed to delete", type: "error" }); setUpdating(false); }
               }}
               disabled={updating}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
@@ -299,15 +269,22 @@ export default function AdminTicketDetailPage() {
               Delete Ticket
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Mobile Chat */}
-      {currentUserId && (
-        <div className="mt-4 lg:hidden">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          {/* Mobile Chat */}
+          {currentUserId && (
+            <div className="lg:hidden">
+              <ChatPanel ticketId={id} currentUserId={currentUserId} />
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right — Full-height chat */}
+        {currentUserId && (
+          <div className="hidden border-l border-border lg:flex lg:flex-col">
+            <ChatPanel ticketId={id} currentUserId={currentUserId} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
