@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { getStatusLabel } from "@/components/ui/status-badge";
 
 interface NavItem {
   label: string;
@@ -140,7 +141,7 @@ export function Sidebar({ navItems, userName, userRole, userId }: SidebarProps) 
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">{result.clientName}</p>
                     <p className="text-xs text-muted">
-                      {result.refNumber} &bull; {result.status.replace(/_/g, " ")}
+                      {result.refNumber} &bull; {getStatusLabel(result.status)}
                       {result.assignedTo && <> &bull; {result.assignedTo.name}</>}
                     </p>
                   </div>

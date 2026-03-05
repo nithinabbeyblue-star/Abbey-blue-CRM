@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CaseBadge } from "@/components/ui/case-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AdsBadge } from "@/components/ui/ads-badge";
 
 interface CaseHeaderProps {
   refNumber: string;
@@ -12,6 +13,7 @@ interface CaseHeaderProps {
   caseOwner: { name: string } | null;
   caseWorker: { name: string } | null;
   caseDeadline: string | null;
+  adsFinishingDate?: string | null;
   backHref: string;
 }
 
@@ -40,6 +42,7 @@ export function CaseHeader({
   caseOwner,
   caseWorker,
   caseDeadline,
+  adsFinishingDate,
   backHref,
 }: CaseHeaderProps) {
   const deadline = getDeadlineInfo(caseDeadline);
@@ -89,6 +92,7 @@ export function CaseHeader({
               Deadline: {deadline.label} ({deadline.daysText})
             </div>
           )}
+          <AdsBadge adsFinishingDate={adsFinishingDate ?? null} />
         </div>
       </div>
     </div>

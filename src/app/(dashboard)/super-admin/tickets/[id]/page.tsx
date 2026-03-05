@@ -39,6 +39,8 @@ interface Ticket {
   adverts: number | null;
   paidAmount: number;
   caseDeadline: string | null;
+  caseStartDate: string | null;
+  adsFinishingDate: string | null;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
   createdBy: { id: string; name: string; email: string };
@@ -144,7 +146,7 @@ export default function SuperAdminTicketDetailPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-3xl space-y-4">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -153,149 +155,145 @@ export default function SuperAdminTicketDetailPage() {
         caseOwner={ticket.createdBy}
         caseWorker={ticket.assignedTo}
         caseDeadline={ticket.caseDeadline}
+        adsFinishingDate={ticket.adsFinishingDate}
         backHref="/super-admin/tickets"
       />
 
       {message.text && (
-        <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+        <div className={`rounded-lg border px-4 py-3 text-sm ${message.type === "success" ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
           {message.text}
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          {/* Editable Client & Case Details */}
-          <EditableDetailsCard
-            ticketId={id}
-            clientName={ticket.clientName}
-            clientPhone={ticket.clientPhone}
-            clientEmail={ticket.clientEmail}
-            nationality={ticket.nationality}
-            caseType={ticket.caseType}
-            destination={ticket.destination}
-            source={ticket.source}
-            onSaved={fetchTicket}
-          />
+      {/* Editable Client & Case Details */}
+      <EditableDetailsCard
+        ticketId={id}
+        clientName={ticket.clientName}
+        clientPhone={ticket.clientPhone}
+        clientEmail={ticket.clientEmail}
+        nationality={ticket.nationality}
+        caseType={ticket.caseType}
+        destination={ticket.destination}
+        source={ticket.source}
+        onSaved={fetchTicket}
+      />
 
-          {/* Financials */}
-          <FinancialCard
-            ticketId={id}
-            ablFee={ticket.ablFee}
-            govFee={ticket.govFee}
-            adverts={ticket.adverts}
-            paidAmount={ticket.paidAmount}
-            caseDeadline={ticket.caseDeadline}
-            financesUpdatedBy={ticket.financesUpdatedBy}
-            financesUpdatedAt={ticket.financesUpdatedAt}
-            canEditFees={true}
-            canEditPaidAmount={true}
-            canEditDeadline={true}
-            canManagePayments={true}
-          />
-
-          {/* Notes */}
-          {ticket.notes && (
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Notes</h2>
-              <p className="whitespace-pre-wrap text-sm">{ticket.notes}</p>
-            </div>
-          )}
-
-          {/* Documents */}
-          <DocumentSection ticketId={id} caseType={ticket.caseType} />
-
-          {/* Audit Log */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Case History</h2>
-            {ticket.auditLogs.length === 0 ? (
-              <p className="text-sm text-muted">No activity yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {ticket.auditLogs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-medium">{log.user.name}</span>{" "}
-                        {log.action.replace(/_/g, " ").toLowerCase()}
-                        {log.oldValue && log.newValue && <> from <span className="font-medium">{log.oldValue.replace(/_/g, " ")}</span> to <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>}
-                        {!log.oldValue && log.newValue && <> &mdash; <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {new Date(log.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-4">
-          {/* Assignment */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Assignment</h2>
-            <p className="mb-3 text-sm">
-              Currently: <span className="font-medium">{ticket.assignedTo?.name || "Unassigned"}</span>
-            </p>
-            <select
-              defaultValue={ticket.assignedTo?.id || ""}
-              disabled={updating}
-              onChange={(e) => { if (e.target.value) handleAssign(e.target.value); }}
-              className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-50"
-            >
-              <option value="" disabled>Reassign to...</option>
-              {admins.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Update Status</h2>
-            <div className="space-y-2">
-              {ORDERED_STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => handleStatusChange(s)}
-                  disabled={updating || s === ticket.status}
-                  className={`w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-colors ${
-                    s === ticket.status
-                      ? "bg-primary text-white"
-                      : "border border-border text-foreground hover:bg-gray-50 disabled:opacity-50"
-                  }`}
-                >
-                  {getStatusLabel(s)}{s === ticket.status && " (Current)"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Case Chat */}
-          {currentUserId && (
-            <ChatPanel ticketId={id} currentUserId={currentUserId} />
-          )}
-
-          {/* Delete Ticket */}
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">
-              Danger Zone
-            </h2>
-            <p className="mb-3 text-xs text-red-600">
-              Permanently delete this ticket and all associated data (documents, chat, audit logs).
-            </p>
+      {/* Update Status */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Update Status</h2>
+        <div className="flex flex-wrap gap-2">
+          {ORDERED_STATUSES.map((s) => (
             <button
-              onClick={handleDelete}
-              disabled={updating}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              key={s}
+              onClick={() => handleStatusChange(s)}
+              disabled={updating || s === ticket.status}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                s === ticket.status
+                  ? "bg-primary text-white cursor-default"
+                  : "border border-border text-foreground hover:bg-gray-50 disabled:opacity-50"
+              }`}
             >
-              Delete Ticket
+              {getStatusLabel(s)}{s === ticket.status && " (Current)"}
             </button>
-          </div>
+          ))}
         </div>
+      </div>
+
+      {/* Assignment */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Assignment</h2>
+        <p className="mb-3 text-sm">
+          Currently: <span className="font-medium">{ticket.assignedTo?.name || "Unassigned"}</span>
+        </p>
+        <select
+          defaultValue={ticket.assignedTo?.id || ""}
+          disabled={updating}
+          onChange={(e) => { if (e.target.value) handleAssign(e.target.value); }}
+          className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-50"
+        >
+          <option value="" disabled>Reassign to...</option>
+          {admins.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Case History */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Case History</h2>
+        {ticket.auditLogs.length === 0 ? (
+          <p className="text-sm text-muted">No activity yet.</p>
+        ) : (
+          <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
+            {ticket.auditLogs.map((log) => (
+              <div key={log.id} className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                <div>
+                  <p className="text-sm">
+                    <span className="font-medium">{log.user.name}</span>{" "}
+                    {log.action.replace(/_/g, " ").toLowerCase()}
+                    {log.oldValue && log.newValue && <> from <span className="font-medium">{log.oldValue.replace(/_/g, " ")}</span> to <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>}
+                    {!log.oldValue && log.newValue && <> &mdash; <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {new Date(log.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Notes */}
+      {ticket.notes && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Notes</h2>
+          <p className="whitespace-pre-wrap text-sm">{ticket.notes}</p>
+        </div>
+      )}
+
+      {/* Financials */}
+      <FinancialCard
+        ticketId={id}
+        ablFee={ticket.ablFee}
+        govFee={ticket.govFee}
+        adverts={ticket.adverts}
+        paidAmount={ticket.paidAmount}
+        caseDeadline={ticket.caseDeadline}
+        caseStartDate={ticket.caseStartDate}
+        adsFinishingDate={ticket.adsFinishingDate}
+        financesUpdatedBy={ticket.financesUpdatedBy}
+        financesUpdatedAt={ticket.financesUpdatedAt}
+        canEditFees={true}
+        canEditPaidAmount={true}
+        canEditDeadline={true}
+        canManagePayments={true}
+      />
+
+      {/* Documents */}
+      <DocumentSection ticketId={id} caseType={ticket.caseType} />
+
+      {/* Case Chat */}
+      {currentUserId && (
+        <ChatPanel ticketId={id} currentUserId={currentUserId} />
+      )}
+
+      {/* Danger Zone */}
+      <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
+          Danger Zone
+        </h2>
+        <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
+          Permanently delete this ticket and all associated data (documents, chat, audit logs).
+        </p>
+        <button
+          onClick={handleDelete}
+          disabled={updating}
+          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
+        >
+          Delete Ticket
+        </button>
       </div>
     </div>
   );

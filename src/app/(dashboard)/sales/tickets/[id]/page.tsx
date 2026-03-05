@@ -37,6 +37,8 @@ interface Ticket {
   adverts: number | null;
   paidAmount: number;
   caseDeadline: string | null;
+  caseStartDate: string | null;
+  adsFinishingDate: string | null;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
   createdBy: { id: string; name: string; email: string };
@@ -99,8 +101,7 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Pinned Case Header */}
+    <div className="mx-auto max-w-3xl space-y-4">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -109,66 +110,96 @@ export default function TicketDetailPage() {
         caseOwner={ticket.createdBy}
         caseWorker={ticket.assignedTo}
         caseDeadline={ticket.caseDeadline}
+        adsFinishingDate={ticket.adsFinishingDate}
         backHref="/sales/tickets"
       />
 
       {/* Editable Client & Case Details */}
-      <div className="mt-6">
-        <EditableDetailsCard
-          ticketId={id}
-          clientName={ticket.clientName}
-          clientPhone={ticket.clientPhone}
-          clientEmail={ticket.clientEmail}
-          nationality={ticket.nationality}
-          caseType={ticket.caseType}
-          destination={ticket.destination}
-          source={ticket.source}
-          onSaved={fetchTicket}
-        />
-      </div>
+      <EditableDetailsCard
+        ticketId={id}
+        clientName={ticket.clientName}
+        clientPhone={ticket.clientPhone}
+        clientEmail={ticket.clientEmail}
+        nationality={ticket.nationality}
+        caseType={ticket.caseType}
+        destination={ticket.destination}
+        source={ticket.source}
+        onSaved={fetchTicket}
+      />
 
-      {/* Financials */}
-      <div className="mt-4">
-        <FinancialCard
-          ticketId={ticket.id}
-          ablFee={ticket.ablFee}
-          govFee={ticket.govFee}
-          adverts={ticket.adverts}
-          paidAmount={ticket.paidAmount}
-          caseDeadline={ticket.caseDeadline}
-          financesUpdatedBy={ticket.financesUpdatedBy}
-          financesUpdatedAt={ticket.financesUpdatedAt}
-          canEditFees={ticket.status === "LEAD"}
-          canEditPaidAmount={false}
-          canEditDeadline={false}
-        />
+      {/* Case History */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">Case History</h2>
+        {ticket.auditLogs.length === 0 ? (
+          <p className="text-sm text-muted">No activity recorded yet.</p>
+        ) : (
+          <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
+            {ticket.auditLogs.map((log) => (
+              <div key={log.id} className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">{log.user.name}</span>{" "}
+                    {log.action.replace(/_/g, " ").toLowerCase()}
+                    {log.oldValue && log.newValue && (
+                      <>
+                        {" "}from <span className="font-medium">{log.oldValue.replace(/_/g, " ")}</span>{" "}
+                        to <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span>
+                      </>
+                    )}
+                    {!log.oldValue && log.newValue && (
+                      <> &mdash; <span className="font-medium">{log.newValue.replace(/_/g, " ")}</span></>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {new Date(log.createdAt).toLocaleDateString("en-GB", {
+                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Notes */}
       {ticket.notes && (
-        <div className="mt-4 rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">
-            Notes
-          </h2>
-          <p className="whitespace-pre-wrap text-sm text-foreground">
-            {ticket.notes}
-          </p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Notes</h2>
+          <p className="whitespace-pre-wrap text-sm text-foreground">{ticket.notes}</p>
         </div>
       )}
+
+      {/* Financials */}
+      <FinancialCard
+        ticketId={ticket.id}
+        ablFee={ticket.ablFee}
+        govFee={ticket.govFee}
+        adverts={ticket.adverts}
+        paidAmount={ticket.paidAmount}
+        caseDeadline={ticket.caseDeadline}
+        caseStartDate={ticket.caseStartDate}
+        adsFinishingDate={ticket.adsFinishingDate}
+        financesUpdatedBy={ticket.financesUpdatedBy}
+        financesUpdatedAt={ticket.financesUpdatedAt}
+        canEditFees={ticket.status === "LEAD"}
+        canEditPaidAmount={true}
+        canEditDeadline={true}
+        canManagePayments={true}
+      />
 
       {/* Case Chat */}
       {currentUserId && (
-        <div className="mt-4">
-          <ChatPanel ticketId={id} currentUserId={currentUserId} />
-        </div>
+        <ChatPanel ticketId={id} currentUserId={currentUserId} />
       )}
 
-      {/* Delete Ticket */}
-      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-600">
+      {/* Danger Zone */}
+      <div className="group rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted transition-colors group-hover:text-red-600">
           Danger Zone
         </h2>
-        <p className="mb-3 text-xs text-red-600">
+        <p className="mb-3 text-xs text-muted transition-colors group-hover:text-red-600">
           Permanently delete this ticket and all associated data (documents, chat, audit logs).
         </p>
         <button
@@ -185,68 +216,10 @@ export default function TicketDetailPage() {
             }
           }}
           disabled={deleting}
-          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white disabled:opacity-50"
         >
           {deleting ? "Deleting..." : "Delete Ticket"}
         </button>
-      </div>
-
-      {/* Audit Log / Case History */}
-      <div className="mt-4 rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-          Case History
-        </h2>
-        {ticket.auditLogs.length === 0 ? (
-          <p className="text-sm text-muted">No activity recorded yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {ticket.auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0"
-              >
-                <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">{log.user.name}</span>{" "}
-                    {log.action.replace(/_/g, " ").toLowerCase()}
-                    {log.oldValue && log.newValue && (
-                      <>
-                        {" "}
-                        from{" "}
-                        <span className="font-medium">
-                          {log.oldValue.replace(/_/g, " ")}
-                        </span>{" "}
-                        to{" "}
-                        <span className="font-medium">
-                          {log.newValue.replace(/_/g, " ")}
-                        </span>
-                      </>
-                    )}
-                    {!log.oldValue && log.newValue && (
-                      <>
-                        {" "}
-                        &mdash;{" "}
-                        <span className="font-medium">
-                          {log.newValue.replace(/_/g, " ")}
-                        </span>
-                      </>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {new Date(log.createdAt).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

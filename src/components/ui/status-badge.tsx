@@ -1,5 +1,5 @@
 export const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  LEAD:           { bg: "bg-blue-100",   text: "text-blue-700",   label: "Lead" },
+  LEAD:           { bg: "bg-blue-100",   text: "text-blue-700",   label: "New Client" },
   DOC_COLLECTION: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Doc Collection" },
   SUBMITTED:      { bg: "bg-purple-100", text: "text-purple-700", label: "Submitted" },
   IN_PROGRESS:    { bg: "bg-orange-100", text: "text-orange-700", label: "In Progress" },

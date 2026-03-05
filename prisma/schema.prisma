@@ -155,7 +155,9 @@ model Ticket {
   govFee       Float?
   adverts      Float?
   paidAmount   Float      @default(0)
-  caseDeadline DateTime?
+  caseDeadline     DateTime?
+  caseStartDate    DateTime?
+  adsFinishingDate DateTime?
 
   financesUpdatedById String?
   financesUpdatedBy   User?    @relation("FinancesUpdatedBy", fields: [financesUpdatedById], references: [id])

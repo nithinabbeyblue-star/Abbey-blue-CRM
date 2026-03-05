@@ -40,6 +40,8 @@ const updateTicketSchema = z.object({
   adverts: z.number().min(0).nullable().optional(),
   paidAmount: z.number().min(0).optional(),
   caseDeadline: z.string().nullable().optional(),
+  caseStartDate: z.string().nullable().optional(),
+  adsFinishingDate: z.string().nullable().optional(),
 });
 
 // GET /api/tickets/[id] — Get a single ticket
@@ -127,17 +129,8 @@ export async function PATCH(
     const isFeeUpdate = data.ablFee !== undefined || data.govFee !== undefined || data.adverts !== undefined;
     if (isFeeUpdate) {
       if (user.role === Role.SALES && ticket.status !== "LEAD") {
-        return NextResponse.json({ error: "Sales can only update fees for Lead tickets" }, { status: 403 });
+        return NextResponse.json({ error: "Sales can only update fees for New Client tickets" }, { status: 403 });
       }
-      if (user.role === Role.ADMIN) {
-        return NextResponse.json({ error: "Admin cannot update fee fields" }, { status: 403 });
-      }
-    }
-    if (data.paidAmount !== undefined && user.role === Role.SALES) {
-      return NextResponse.json({ error: "Sales cannot update paid amount" }, { status: 403 });
-    }
-    if (data.caseDeadline !== undefined && user.role === Role.SALES) {
-      return NextResponse.json({ error: "Sales cannot update deadline" }, { status: 403 });
     }
 
     // Build update data and audit logs
@@ -212,6 +205,24 @@ export async function PATCH(
         action: "DEADLINE_UPDATED",
         oldValue: ticket.caseDeadline?.toISOString() ?? null,
         newValue: data.caseDeadline ?? null,
+      });
+    }
+
+    if (data.caseStartDate !== undefined) {
+      updateData.caseStartDate = data.caseStartDate ? new Date(data.caseStartDate) : null;
+      auditEntries.push({
+        action: "CASE_START_DATE_UPDATED",
+        oldValue: ticket.caseStartDate?.toISOString() ?? null,
+        newValue: data.caseStartDate ?? null,
+      });
+    }
+
+    if (data.adsFinishingDate !== undefined) {
+      updateData.adsFinishingDate = data.adsFinishingDate ? new Date(data.adsFinishingDate) : null;
+      auditEntries.push({
+        action: "ADS_FINISHING_DATE_UPDATED",
+        oldValue: ticket.adsFinishingDate?.toISOString() ?? null,
+        newValue: data.adsFinishingDate ?? null,
       });
     }
 

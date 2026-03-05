@@ -9,11 +9,11 @@ import type { CaseTypeKey } from "@/constants/cases";
 
 const createTicketSchema = z.object({
   clientName: z.string().min(1, "Client name is required"),
-  clientEmail: z.string().email().optional().or(z.literal("")),
+  clientEmail: z.string().min(1, "Email is required").email("Invalid email address"),
   clientPhone: z.string().min(1, "Phone number is required"),
-  nationality: z.string().optional().or(z.literal("")),
-  caseType: z.nativeEnum(CaseType).optional().nullable(),
-  destination: z.string().optional().or(z.literal("")),
+  nationality: z.string().min(1, "Nationality is required"),
+  caseType: z.nativeEnum(CaseType, { error: "Case type is required" }),
+  destination: z.string().min(1, "Destination country is required"),
   source: z.enum([
     "WHATSAPP",
     "TIKTOK",
@@ -29,6 +29,7 @@ const createTicketSchema = z.object({
   govFee: z.number().min(0).nullable().optional(),
   adverts: z.number().min(0).nullable().optional(),
   caseDeadline: z.string().nullable().optional(),
+  caseStartDate: z.string().min(1, "Case start date is required"),
 });
 
 // POST /api/tickets — Create a new ticket (Sales only)
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
         govFee: data.govFee ?? null,
         adverts: data.adverts ?? null,
         caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
+        caseStartDate: data.caseStartDate ? new Date(data.caseStartDate) : null,
         ...(data.ablFee != null || data.govFee != null || data.adverts != null
           ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
           : {}),

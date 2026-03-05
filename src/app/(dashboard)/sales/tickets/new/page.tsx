@@ -20,6 +20,8 @@ const PRIORITIES = [
   { value: 2, label: "Urgent" },
 ];
 
+type FieldErrors = Record<string, string>;
+
 export default function NewTicketPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -28,23 +30,57 @@ export default function NewTicketPage() {
   const [ablFee, setAblFee] = useState<number | null>(null);
   const [govFee, setGovFee] = useState<number | null>(null);
   const [adverts, setAdverts] = useState<number | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [attempted, setAttempted] = useState(false);
+
+  function validate(formData: FormData): FieldErrors {
+    const errors: FieldErrors = {};
+    const clientName = (formData.get("clientName") as string)?.trim();
+    const clientPhone = (formData.get("clientPhone") as string)?.trim();
+    const clientEmail = (formData.get("clientEmail") as string)?.trim();
+    const nationality = (formData.get("nationality") as string)?.trim();
+    const destination = (formData.get("destination") as string)?.trim();
+    const caseStartDate = (formData.get("caseStartDate") as string)?.trim();
+
+    if (!clientName) errors.clientName = "Full name is required";
+    if (!clientPhone) errors.clientPhone = "Phone number is required";
+    if (!clientEmail) errors.clientEmail = "Email is required";
+    if (!nationality) errors.nationality = "Nationality is required";
+    if (!caseType) errors.caseType = "Case type is required";
+    if (!destination) errors.destination = "Destination country is required";
+    if (!caseStartDate) errors.caseStartDate = "Case start date is required";
+
+    return errors;
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setAttempted(true);
 
     const formData = new FormData(e.currentTarget);
+    const errors = validate(formData);
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setError("Please fill in all required fields before creating a ticket.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
     const body: Record<string, unknown> = {
-      clientName: formData.get("clientName") as string,
-      clientEmail: formData.get("clientEmail") as string,
-      clientPhone: formData.get("clientPhone") as string,
-      nationality: formData.get("nationality") as string,
+      clientName: (formData.get("clientName") as string).trim(),
+      clientEmail: (formData.get("clientEmail") as string).trim(),
+      clientPhone: (formData.get("clientPhone") as string).trim(),
+      nationality: (formData.get("nationality") as string).trim(),
       caseType: caseType,
-      destination: formData.get("destination") as string,
+      destination: (formData.get("destination") as string).trim(),
       source: formData.get("source") as string,
       priority: parseInt(formData.get("priority") as string, 10),
       notes: formData.get("notes") as string,
+      caseStartDate: (formData.get("caseStartDate") as string).trim(),
     };
     if (ablFee != null) body.ablFee = ablFee;
     if (govFee != null) body.govFee = govFee;
@@ -73,11 +109,18 @@ export default function NewTicketPage() {
     }
   }
 
+  const inputClass = (field: string) =>
+    `w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 ${
+      attempted && fieldErrors[field]
+        ? "border-red-400 focus:border-red-500 focus:ring-red-200"
+        : "border-border focus:border-primary focus:ring-primary/20"
+    }`;
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-2xl font-bold text-foreground">Create New Ticket</h1>
       <p className="mt-1 text-sm text-muted">
-        Enter the lead details from WhatsApp, TikTok, or walk-in.
+        Fill in all required fields to create a new client ticket.
       </p>
 
       {error && (
@@ -99,10 +142,12 @@ export default function NewTicketPage() {
               </label>
               <input
                 name="clientName"
-                required
                 placeholder="e.g. John Smith"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={inputClass("clientName")}
               />
+              {attempted && fieldErrors.clientName && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.clientName}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -110,31 +155,39 @@ export default function NewTicketPage() {
               </label>
               <input
                 name="clientPhone"
-                required
                 placeholder="e.g. +44 7700 900000"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={inputClass("clientPhone")}
               />
+              {attempted && fieldErrors.clientPhone && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.clientPhone}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Email
+                Email <span className="text-danger">*</span>
               </label>
               <input
                 name="clientEmail"
                 type="email"
                 placeholder="e.g. john@example.com"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={inputClass("clientEmail")}
               />
+              {attempted && fieldErrors.clientEmail && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.clientEmail}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Nationality
+                Nationality <span className="text-danger">*</span>
               </label>
               <input
                 name="nationality"
                 placeholder="e.g. Pakistani"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={inputClass("nationality")}
               />
+              {attempted && fieldErrors.nationality && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.nationality}</p>
+              )}
             </div>
           </div>
         </div>
@@ -147,19 +200,40 @@ export default function NewTicketPage() {
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Case Type
+                Case Type <span className="text-danger">*</span>
               </label>
-              <CaseDropdown value={caseType} onChange={setCaseType} />
+              <div className={attempted && fieldErrors.caseType ? "rounded-lg ring-2 ring-red-200" : ""}>
+                <CaseDropdown value={caseType} onChange={setCaseType} />
+              </div>
+              {attempted && fieldErrors.caseType && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.caseType}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Destination Country
+                Destination Country <span className="text-danger">*</span>
               </label>
               <input
                 name="destination"
                 placeholder="e.g. Ireland"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={inputClass("destination")}
               />
+              {attempted && fieldErrors.destination && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.destination}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Case Start Date <span className="text-danger">*</span>
+              </label>
+              <input
+                name="caseStartDate"
+                type="date"
+                className={inputClass("caseStartDate")}
+              />
+              {attempted && fieldErrors.caseStartDate && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.caseStartDate}</p>
+              )}
             </div>
           </div>
         </div>

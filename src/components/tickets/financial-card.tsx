@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { calcVat, calcTotal, calcDue, formatCurrency } from "@/constants/finance";
+import { AdsBadge } from "@/components/ui/ads-badge";
 
 interface Payment {
   id: string;
@@ -22,6 +23,8 @@ interface FinancialCardProps {
   adverts: number | null;
   paidAmount: number;
   caseDeadline: string | null;
+  caseStartDate?: string | null;
+  adsFinishingDate?: string | null;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
   canEditFees: boolean;
@@ -56,6 +59,8 @@ export function FinancialCard({
   adverts,
   paidAmount,
   caseDeadline,
+  caseStartDate,
+  adsFinishingDate,
   financesUpdatedBy,
   financesUpdatedAt,
   canEditFees,
@@ -69,6 +74,12 @@ export function FinancialCard({
   const [paidLocal, setPaid] = useState(paidAmount);
   const [deadlineLocal, setDeadline] = useState(
     caseDeadline ? caseDeadline.slice(0, 10) : ""
+  );
+  const [startDateLocal, setStartDate] = useState(
+    caseStartDate ? caseStartDate.slice(0, 10) : ""
+  );
+  const [adsDateLocal, setAdsDate] = useState(
+    adsFinishingDate ? adsFinishingDate.slice(0, 10) : ""
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -95,7 +106,9 @@ export function FinancialCard({
     govFeeLocal !== govFee ||
     advertsLocal !== adverts ||
     paidLocal !== paidAmount ||
-    deadlineLocal !== (caseDeadline ? caseDeadline.slice(0, 10) : "");
+    deadlineLocal !== (caseDeadline ? caseDeadline.slice(0, 10) : "") ||
+    startDateLocal !== (caseStartDate ? caseStartDate.slice(0, 10) : "") ||
+    adsDateLocal !== (adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
 
   const canEdit = canEditFees || canEditPaidAmount || canEditDeadline;
 
@@ -133,6 +146,12 @@ export function FinancialCard({
       }
       if (canEditDeadline && deadlineLocal !== (caseDeadline ? caseDeadline.slice(0, 10) : "")) {
         body.caseDeadline = deadlineLocal || null;
+      }
+      if (startDateLocal !== (caseStartDate ? caseStartDate.slice(0, 10) : "")) {
+        body.caseStartDate = startDateLocal || null;
+      }
+      if (adsDateLocal !== (adsFinishingDate ? adsFinishingDate.slice(0, 10) : "")) {
+        body.adsFinishingDate = adsDateLocal || null;
       }
 
       if (Object.keys(body).length === 0) {
@@ -396,6 +415,33 @@ export function FinancialCard({
           ) : null}
         </div>
       )}
+
+      {/* Case Start Date & ADS Finishing Date */}
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted">Case Start Date</label>
+          <input
+            type="date"
+            value={startDateLocal}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted">ADS Finishing Date</label>
+          <input
+            type="date"
+            value={adsDateLocal}
+            onChange={(e) => setAdsDate(e.target.value)}
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+          {adsDateLocal && (
+            <div className="mt-1">
+              <AdsBadge adsFinishingDate={adsDateLocal} />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Last Updated By */}
       {financesUpdatedBy && financesUpdatedAt && (

@@ -34,7 +34,7 @@ export default async function SalesDashboard() {
 
   const stats = [
     { label: "My Tickets", value: total, color: "bg-blue-500" },
-    { label: "New Leads", value: newCount, color: "bg-green-500" },
+    { label: "New Clients", value: newCount, color: "bg-green-500" },
     { label: "In Progress", value: inProgress, color: "bg-yellow-500" },
     { label: "Approved", value: approved, color: "bg-emerald-500" },
   ];
