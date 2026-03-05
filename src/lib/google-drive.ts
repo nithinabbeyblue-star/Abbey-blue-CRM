@@ -11,7 +11,7 @@ const auth = new google.auth.GoogleAuth({
 
 const drive = google.drive({ version: "v3", auth });
 
-// Accept folder ID, or full Drive URL, or ID with query params (strip to plain ID)
+// Accept folder ID, or full Drive URL, or ID with query params (strip to plain ID). Only called when uploading (so app doesn't crash if env is missing).
 function getFolderId(): string {
   const raw = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim();
   if (!raw) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
@@ -20,7 +20,6 @@ function getFolderId(): string {
   if (!id) throw new Error("GOOGLE_DRIVE_FOLDER_ID is invalid");
   return id;
 }
-const FOLDER_ID = getFolderId();
 
 /**
  * Upload a file to Google Drive and make it accessible via link.
@@ -30,10 +29,11 @@ export async function uploadToGoogleDrive(
   mimeType: string,
   fileBuffer: Buffer
 ): Promise<{ fileId: string; webViewLink: string; downloadUrl: string }> {
+  const folderId = getFolderId();
   const res = await drive.files.create({
     requestBody: {
       name: fileName,
-      parents: [FOLDER_ID],
+      parents: [folderId],
     },
     media: {
       mimeType,

@@ -37,8 +37,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials?.password as string;
         if (!email || !password) return null;
 
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user) return null;
+        try {
+          const user = await db.user.findUnique({ where: { email } });
+          if (!user) return null;
 
         // Extract request info for audit logging
         const headers = request?.headers ? new Headers(request.headers) : new Headers();
@@ -100,6 +101,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           sessionVersion: user.sessionVersion,
         };
+        } catch (err) {
+          console.error("[Auth] Login error:", err);
+          throw new Error("LOGIN_UNAVAILABLE");
+        }
       },
     }),
   ],

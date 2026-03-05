@@ -41,6 +41,10 @@ function LoginForm() {
           setError("Your account has been deactivated. Contact your administrator.");
           return;
         }
+        if (errMsg.includes("LOGIN_UNAVAILABLE")) {
+          setError("Login is temporarily unavailable. Please try again later or contact support.");
+          return;
+        }
 
         setError("Invalid email or password");
         return;
