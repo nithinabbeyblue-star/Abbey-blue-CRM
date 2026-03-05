@@ -201,22 +201,11 @@ export function EditableDetailsCard({
           </div>
         </dl>
 
-        {/* Address — prominent */}
-        {address && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <dt className="text-xs font-medium text-amber-700">
-              Address
-              <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">Important</span>
-            </dt>
-            <dd className="mt-1 text-sm text-foreground">{address}</dd>
-          </div>
-        )}
-        {!address && (
-          <div className="mt-4">
-            <dt className="text-xs font-medium text-muted">Address</dt>
-            <dd className="mt-1 text-sm text-muted">—</dd>
-          </div>
-        )}
+        {/* Address */}
+        <div className="col-span-2 mt-2">
+          <dt className="text-xs font-medium text-muted">Address</dt>
+          <dd className="mt-1 text-sm text-foreground">{address || "—"}</dd>
+        </div>
 
         {/* Date Fields */}
         <div className="mt-4 border-t border-border pt-4">
@@ -335,7 +324,6 @@ export function EditableDetailsCard({
         <div className="col-span-2">
           <label className="mb-1 block text-xs font-medium text-muted">
             Address
-            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Important</span>
           </label>
           <textarea
             rows={2}

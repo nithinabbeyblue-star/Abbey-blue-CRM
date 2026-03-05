@@ -10,9 +10,7 @@ import {
 } from "@headlessui/react";
 import {
   CASE_CONFIG,
-  GROUP_LABELS,
-  GROUP_ORDER,
-  getCasesByGroup,
+  getAllCaseTypes,
   type CaseTypeKey,
 } from "@/constants/cases";
 
@@ -25,18 +23,15 @@ export function CaseDropdown({
 }) {
   const [query, setQuery] = useState("");
 
-  const groupedFiltered = useMemo(() => {
-    const byGroup = getCasesByGroup();
-    return GROUP_ORDER.map((group) => ({
-      group,
-      label: GROUP_LABELS[group],
-      items: (byGroup.get(group) || []).filter(
-        (c) =>
-          !query ||
-          c.label.toLowerCase().includes(query.toLowerCase()) ||
-          c.shortCode.toLowerCase().includes(query.toLowerCase())
-      ),
-    })).filter((g) => g.items.length > 0);
+  const filtered = useMemo(() => {
+    const all = getAllCaseTypes();
+    if (!query) return all;
+    const q = query.toLowerCase();
+    return all.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.shortCode.toLowerCase().includes(q)
+    );
   }, [query]);
 
   const selectedConfig = value ? CASE_CONFIG[value] : null;
@@ -63,34 +58,27 @@ export function CaseDropdown({
         </ComboboxButton>
 
         <ComboboxOptions className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-border bg-white py-1 shadow-lg">
-          {groupedFiltered.length === 0 ? (
+          {filtered.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted">No results found.</p>
           ) : (
-            groupedFiltered.map(({ group, label, items }) => (
-              <div key={group}>
-                <p className="sticky top-0 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
-                  {label}
-                </p>
-                {items.map((item) => (
-                  <ComboboxOption
-                    key={item.key}
-                    value={item.key}
-                    className="cursor-pointer px-4 py-2.5 text-sm text-foreground data-[focus]:bg-primary/5 data-[focus]:text-primary"
-                  >
-                    {({ selected }) => (
-                      <span className="flex items-center gap-2">
-                        <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
-                        <span className={selected ? "font-medium" : ""}>{item.label}</span>
-                        {selected && (
-                          <svg className="ml-auto h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </span>
+            filtered.map((item) => (
+              <ComboboxOption
+                key={item.key}
+                value={item.key}
+                className="cursor-pointer px-4 py-2.5 text-sm text-foreground data-[focus]:bg-primary/5 data-[focus]:text-primary"
+              >
+                {({ selected }) => (
+                  <span className="flex items-center gap-2">
+                    <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${item.badgeBg.replace("100", "400")}`} />
+                    <span className={selected ? "font-medium" : ""}>{item.label}</span>
+                    {selected && (
+                      <svg className="ml-auto h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     )}
-                  </ComboboxOption>
-                ))}
-              </div>
+                  </span>
+                )}
+              </ComboboxOption>
             ))
           )}
         </ComboboxOptions>

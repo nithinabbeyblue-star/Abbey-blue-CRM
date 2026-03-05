@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getRequiredDocuments, type CaseTypeKey } from "@/constants/cases";
+
 
 interface DocumentItem {
   id: string;
@@ -135,41 +135,6 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
         Documents
       </h2>
-
-      {/* Required Documents Checklist */}
-      {caseType && (() => {
-        const requiredDocs = getRequiredDocuments(caseType as CaseTypeKey);
-        if (requiredDocs.length === 0) return null;
-        return (
-          <div className="mb-5 rounded-lg border border-border bg-gray-50 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              Required Documents
-            </p>
-            <ul className="space-y-1.5">
-              {requiredDocs.map((doc) => {
-                const keyword = doc.split("(")[0].trim().split("/")[0].trim().toLowerCase();
-                const isUploaded = documents.some(
-                  (d) => d.fileName.toLowerCase().includes(keyword) || d.fileType.toLowerCase().includes(keyword.split(" ")[0])
-                );
-                return (
-                  <li key={doc} className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white ${
-                        isUploaded ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    >
-                      {isUploaded ? "✓" : ""}
-                    </span>
-                    <span className={isUploaded ? "text-green-700 line-through" : "text-foreground"}>
-                      {doc}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })()}
 
       {/* Upload Form */}
       <div className="flex items-end gap-3">

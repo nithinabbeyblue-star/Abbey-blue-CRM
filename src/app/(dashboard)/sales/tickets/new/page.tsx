@@ -225,7 +225,6 @@ export default function NewTicketPage() {
             <div className="sm:col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Address <span className="text-danger">*</span>
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Important</span>
               </label>
               <textarea
                 name="address"
