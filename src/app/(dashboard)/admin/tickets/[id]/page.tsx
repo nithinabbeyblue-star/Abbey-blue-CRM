@@ -212,7 +212,6 @@ export default function AdminTicketDetailPage() {
             ablFee={ticket.ablFee}
             govFee={ticket.govFee}
             adsFee={ticket.adsFee}
-            adverts={ticket.adverts}
             paidAmount={ticket.paidAmount}
             financesUpdatedBy={ticket.financesUpdatedBy}
             financesUpdatedAt={ticket.financesUpdatedAt}

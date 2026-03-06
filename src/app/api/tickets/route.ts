@@ -152,6 +152,9 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const staffId = searchParams.get("staffId");
+  const caseType = searchParams.get("caseType");
+  const priority = searchParams.get("priority");
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
@@ -177,8 +180,25 @@ export async function GET(request: NextRequest) {
   }
   // SUPER_ADMIN sees everything — no filter
 
-  if (status) {
+  if (status && status !== "ALL") {
     where.status = status;
+  } else if (!status) {
+    // By default, exclude APPROVED/REJECTED from active view
+    where.status = { notIn: ["APPROVED", "REJECTED"] };
+  }
+  // status === "ALL" → no filter, show everything
+
+  // Staff filter: filter by assignedToId or createdById depending on context
+  if (staffId) {
+    where.OR = [{ assignedToId: staffId }, { createdById: staffId }];
+  }
+
+  if (caseType) {
+    where.caseType = caseType;
+  }
+
+  if (priority) {
+    where.priority = parseInt(priority, 10);
   }
 
   const [tickets, total] = await Promise.all([

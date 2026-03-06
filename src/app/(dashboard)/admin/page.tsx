@@ -1,9 +1,8 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { Role } from "@/generated/prisma/enums";
+import { Role, TicketStatus } from "@/generated/prisma/enums";
 import { STATUS_CONFIG } from "@/components/ui/status-badge";
-import { calcVat, formatCurrency } from "@/constants/finance";
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser();
@@ -13,18 +12,18 @@ export default async function AdminDashboard() {
 
   // Admin Manager sees all tickets, Admin sees only assigned
   const where = isManager ? {} : { assignedToId: user.userId };
+  const activeWhere = { ...where, status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] } };
 
-  const [total, unassigned, docCollection, submitted, approved, recentTickets, financials] =
+  const [total, unassigned, docCollection, submitted, recentTickets] =
     await Promise.all([
-      db.ticket.count({ where }),
-      db.ticket.count({ where: { assignedToId: null } }),
+      db.ticket.count({ where: activeWhere }),
+      db.ticket.count({ where: { assignedToId: null, status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] } } }),
       db.ticket.count({
         where: { ...where, status: "DOC_COLLECTION" },
       }),
       db.ticket.count({ where: { ...where, status: "SUBMITTED" } }),
-      db.ticket.count({ where: { ...where, status: "APPROVED" } }),
       db.ticket.findMany({
-        where,
+        where: activeWhere,
         orderBy: { updatedAt: "desc" },
         take: 5,
         include: {
@@ -32,31 +31,19 @@ export default async function AdminDashboard() {
           assignedTo: { select: { name: true } },
         },
       }),
-      isManager
-        ? db.ticket.aggregate({
-            _sum: { paidAmount: true, ablFee: true, adsFee: true },
-          })
-        : null,
     ]);
-
-  // Financial Health calculations (Manager/SA only)
-  const grossRevenue = financials?._sum.paidAmount ?? 0;
-  const vatLiability = calcVat(financials?._sum.ablFee ?? 0);
-  const totalAdsFees = financials?._sum.adsFee ?? 0;
-  const netProfit = Math.round((grossRevenue - vatLiability - totalAdsFees) * 100) / 100;
 
   const stats = isManager
     ? [
-        { label: "Total Tickets", value: total, color: "bg-blue-500" },
+        { label: "Active Cases", value: total, color: "bg-blue-500" },
         { label: "Unassigned", value: unassigned, color: "bg-red-500" },
         { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
-        { label: "Approved", value: approved, color: "bg-emerald-500" },
+        { label: "Submitted", value: submitted, color: "bg-purple-500" },
       ]
     : [
-        { label: "Assigned to Me", value: total, color: "bg-blue-500" },
+        { label: "Active Cases", value: total, color: "bg-blue-500" },
         { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
         { label: "Submitted", value: submitted, color: "bg-purple-500" },
-        { label: "Approved", value: approved, color: "bg-emerald-500" },
       ];
 
   return (
@@ -81,38 +68,6 @@ export default async function AdminDashboard() {
           </Link>
         )}
       </div>
-
-      {/* Executive Financial Summary — Manager/SA only */}
-      {isManager && (
-        <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-            Financial Health
-          </h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <p className="text-xs font-medium text-muted">Gross Revenue</p>
-              <p className="mt-1 text-2xl font-bold text-blue-600">
-                {formatCurrency(grossRevenue)}
-              </p>
-              <p className="mt-0.5 text-xs text-muted">Total paid by clients</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-muted">Tax Liability (VAT 23%)</p>
-              <p className="mt-1 text-2xl font-bold text-orange-600">
-                {formatCurrency(vatLiability)}
-              </p>
-              <p className="mt-0.5 text-xs text-muted">To be set aside for Revenue</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-muted">Net Profit</p>
-              <p className={`mt-1 text-2xl font-bold ${netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(netProfit)}
-              </p>
-              <p className="mt-0.5 text-xs text-muted">After VAT & ADS fees</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Stats Cards */}
       <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -139,7 +94,7 @@ export default async function AdminDashboard() {
             {isManager ? "Recent Tickets" : "Active Cases"}
           </h2>
           <Link
-            href="/admin/tickets"
+            href={isManager ? "/admin/tickets" : "/admin/my-cases"}
             className="text-sm font-medium text-primary hover:underline"
           >
             View all

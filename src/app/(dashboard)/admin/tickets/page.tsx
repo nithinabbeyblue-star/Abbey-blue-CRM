@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusBadge, ORDERED_STATUSES } from "@/components/ui/status-badge";
 import { CaseBadge } from "@/components/ui/case-badge";
+import { CASE_CONFIG } from "@/constants/cases";
 
 interface Ticket {
   id: string;
@@ -19,6 +20,11 @@ interface Ticket {
   assignedTo: { id: string; name: string } | null;
 }
 
+interface StaffMember {
+  id: string;
+  name: string;
+}
+
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: "Normal", color: "text-muted" },
   1: { label: "High", color: "text-warning" },
@@ -29,10 +35,27 @@ export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [staffFilter, setStaffFilter] = useState("");
+  const [caseTypeFilter, setCaseTypeFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+
+  // Fetch staff list for dropdown
+  useEffect(() => {
+    fetch("/api/users/admins")
+      .then((res) => res.json())
+      .then((data) => setStaffList(data.admins || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function fetchTickets() {
-      const url = filter ? `/api/tickets?status=${filter}` : "/api/tickets";
+      const params = new URLSearchParams();
+      if (filter) params.set("status", filter);
+      if (staffFilter) params.set("staffId", staffFilter);
+      if (caseTypeFilter) params.set("caseType", caseTypeFilter);
+      if (priorityFilter) params.set("priority", priorityFilter);
+      const url = `/api/tickets${params.toString() ? `?${params}` : ""}`;
       const res = await fetch(url);
       const data = await res.json();
       setTickets(data.tickets || []);
@@ -40,9 +63,10 @@ export default function AdminTicketsPage() {
     }
     setLoading(true);
     fetchTickets();
-  }, [filter]);
+  }, [filter, staffFilter, caseTypeFilter, priorityFilter]);
 
   const statuses = ["", ...ORDERED_STATUSES];
+  const caseTypes = Object.entries(CASE_CONFIG);
 
   return (
     <div>
@@ -53,8 +77,53 @@ export default function AdminTicketsPage() {
         </p>
       </div>
 
+      {/* Filter Dropdowns */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <select
+          value={staffFilter}
+          onChange={(e) => setStaffFilter(e.target.value)}
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        >
+          <option value="">All Staff</option>
+          {staffList.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={caseTypeFilter}
+          onChange={(e) => setCaseTypeFilter(e.target.value)}
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        >
+          <option value="">All Case Types</option>
+          {caseTypes.map(([key, config]) => (
+            <option key={key} value={key}>{config.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        >
+          <option value="">All Priorities</option>
+          <option value="0">Normal</option>
+          <option value="1">High</option>
+          <option value="2">Urgent</option>
+        </select>
+
+        {(staffFilter || caseTypeFilter || priorityFilter) && (
+          <button
+            onClick={() => { setStaffFilter(""); setCaseTypeFilter(""); setPriorityFilter(""); }}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
+
       {/* Status Filters */}
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {statuses.map((s) => (
           <button
             key={s}

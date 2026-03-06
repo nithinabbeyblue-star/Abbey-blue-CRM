@@ -9,7 +9,7 @@ export async function GET() {
   if (error) return error;
 
   const salesUsers = await db.user.findMany({
-    where: { role: Role.SALES, status: "ACTIVE" },
+    where: { role: { in: [Role.SALES, Role.SALES_MANAGER] }, status: "ACTIVE" },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });

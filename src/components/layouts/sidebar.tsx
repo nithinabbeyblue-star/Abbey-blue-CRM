@@ -154,23 +154,30 @@ export function Sidebar({ navItems, userName, userRole, userId }: SidebarProps) 
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-sidebar-active text-white"
-                  : "text-sidebar-text hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
+        {(() => {
+          // Find the longest matching nav href so only the most specific item is highlighted
+          const activeHref = navItems
+            .filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"))
+            .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+          return navItems.map((item) => {
+            const isActive = activeHref === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-sidebar-active text-white"
+                    : "text-sidebar-text hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          });
+        })()}
       </nav>
 
       {/* User Section */}

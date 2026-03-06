@@ -20,7 +20,6 @@ interface FinancialCardProps {
   ablFee: number | null;
   govFee: number | null;
   adsFee: number | null;
-  adverts: number | null;
   paidAmount: number;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
@@ -36,16 +35,9 @@ function parseNum(v: string): number | null {
 }
 
 const PAYMENT_TYPES = [
-  { value: "CONSULTATION_FEE", label: "Consultation Fee" },
-  { value: "SERVICE_FEE", label: "Service Fee" },
-  { value: "GOVERNMENT_FEE", label: "Government Fee" },
+  { value: "INITIAL_PAYMENT", label: "Initial Payment" },
+  { value: "FINAL_PAYMENT", label: "Final Payment" },
   { value: "OTHER", label: "Other" },
-];
-
-const PAYMENT_STATUSES = [
-  { value: "PENDING", label: "Pending" },
-  { value: "PAID", label: "Paid" },
-  { value: "REFUNDED", label: "Refunded" },
 ];
 
 export function FinancialCard({
@@ -53,7 +45,6 @@ export function FinancialCard({
   ablFee,
   govFee,
   adsFee,
-  adverts,
   paidAmount,
   financesUpdatedBy,
   financesUpdatedAt,
@@ -64,7 +55,6 @@ export function FinancialCard({
   const [ablFeeLocal, setAblFee] = useState(ablFee);
   const [govFeeLocal, setGovFee] = useState(govFee);
   const [adsFeeLocal, setAdsFee] = useState(adsFee);
-  const [advertsLocal, setAdverts] = useState(adverts);
   const [paidLocal, setPaid] = useState(paidAmount);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -76,21 +66,21 @@ export function FinancialCard({
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
-    type: "SERVICE_FEE",
-    status: "PENDING",
+    type: "",
+    status: "PAID",
     notes: "",
   });
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [selectedPaymentType, setSelectedPaymentType] = useState("");
 
   const vat = calcVat(ablFeeLocal);
-  const total = calcTotal(ablFeeLocal, govFeeLocal, advertsLocal, adsFeeLocal);
+  const total = calcTotal(ablFeeLocal, govFeeLocal, null, adsFeeLocal);
   const due = calcDue(total, paidLocal);
 
   const hasChanges =
     ablFeeLocal !== ablFee ||
     govFeeLocal !== govFee ||
     adsFeeLocal !== adsFee ||
-    advertsLocal !== adverts ||
     paidLocal !== paidAmount;
 
   const canEdit = canEditFees || canEditPaidAmount;
@@ -123,7 +113,6 @@ export function FinancialCard({
         if (ablFeeLocal !== ablFee) body.ablFee = ablFeeLocal;
         if (govFeeLocal !== govFee) body.govFee = govFeeLocal;
         if (adsFeeLocal !== adsFee) body.adsFee = adsFeeLocal;
-        if (advertsLocal !== adverts) body.adverts = advertsLocal;
       }
       if (canEditPaidAmount && paidLocal !== paidAmount) {
         body.paidAmount = paidLocal;
@@ -145,6 +134,28 @@ export function FinancialCard({
         throw new Error(data.error || "Failed to update");
       }
 
+      // Auto-create payment record when paid amount changes
+      if (canEditPaidAmount && paidLocal !== paidAmount) {
+        const diff = paidLocal - paidAmount;
+        if (diff !== 0) {
+          const payRes = await fetch(`/api/tickets/${ticketId}/payments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: Math.abs(diff),
+              type: selectedPaymentType || "OTHER",
+              status: "PAID",
+              notes: "Auto-recorded from paid amount update",
+            }),
+          });
+          if (!payRes.ok) {
+            const payErr = await payRes.json();
+            console.error("Auto-payment failed:", payErr);
+          }
+        }
+      }
+
+      await fetchPayments();
       setMessage({ text: "Financials saved", type: "success" });
     } catch (err) {
       setMessage({
@@ -157,7 +168,7 @@ export function FinancialCard({
   }
 
   function resetPaymentForm() {
-    setPaymentForm({ amount: "", type: "SERVICE_FEE", status: "PENDING", notes: "" });
+    setPaymentForm({ amount: "", type: "", status: "PAID", notes: "" });
     setEditingPayment(null);
     setShowPaymentForm(false);
   }
@@ -320,25 +331,22 @@ export function FinancialCard({
           )}
         </div>
 
-        {/* Adverts */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Adverts</label>
-          {canEditFees ? (
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={advertsLocal ?? ""}
-              onChange={(e) => setAdverts(parseNum(e.target.value))}
-              placeholder="0.00"
+        {/* Payment Type */}
+        {canManagePayments && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Payment Type</label>
+            <select
+              value={selectedPaymentType}
+              onChange={(e) => setSelectedPaymentType(e.target.value)}
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          ) : (
-            <p className="py-2 text-sm font-medium text-foreground">
-              {advertsLocal != null ? formatCurrency(advertsLocal) : "—"}
-            </p>
-          )}
-        </div>
+            >
+              <option value="" disabled>Select an option</option>
+              {PAYMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* VAT (23%) */}
         <div>
@@ -449,7 +457,7 @@ export function FinancialCard({
             <p className="mb-3 text-xs font-semibold text-foreground">
               {editingPayment ? "Edit Payment" : "New Payment"}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs text-muted">Amount</label>
                 <input
@@ -459,6 +467,7 @@ export function FinancialCard({
                   required
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))}
+                  placeholder="0.00"
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </div>
@@ -467,22 +476,12 @@ export function FinancialCard({
                 <select
                   value={paymentForm.type}
                   onChange={(e) => setPaymentForm((f) => ({ ...f, type: e.target.value }))}
+                  required
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                 >
+                  <option value="" disabled>Select an option</option>
                   {PAYMENT_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Status</label>
-                <select
-                  value={paymentForm.status}
-                  onChange={(e) => setPaymentForm((f) => ({ ...f, status: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  {PAYMENT_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
@@ -492,7 +491,7 @@ export function FinancialCard({
                   type="text"
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder=""
+                  placeholder="Optional"
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </div>
@@ -500,7 +499,7 @@ export function FinancialCard({
             <div className="mt-3 flex gap-2">
               <button
                 type="submit"
-                disabled={paymentSaving || !paymentForm.amount}
+                disabled={paymentSaving || !paymentForm.amount || !paymentForm.type}
                 className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
               >
                 {paymentSaving ? "Saving..." : editingPayment ? "Update" : "Save"}

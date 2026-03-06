@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const sort = searchParams.get("sort") || "recent";
   const status = searchParams.get("status") || "";
+  const caseType = searchParams.get("caseType") || "";
+  const priority = searchParams.get("priority");
 
   // Always personal: cases where user is the assignee OR the creator
   const where: Record<string, unknown> = {
@@ -23,6 +25,17 @@ export async function GET(request: NextRequest) {
 
   if (status) {
     where.status = status;
+  } else {
+    // By default, exclude APPROVED/REJECTED from active view
+    where.status = { notIn: ["APPROVED", "REJECTED"] };
+  }
+
+  if (caseType) {
+    where.caseType = caseType;
+  }
+
+  if (priority) {
+    where.priority = parseInt(priority, 10);
   }
 
   // Build orderBy based on sort

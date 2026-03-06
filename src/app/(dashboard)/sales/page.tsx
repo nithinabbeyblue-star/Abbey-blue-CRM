@@ -2,16 +2,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { STATUS_CONFIG } from "@/components/ui/status-badge";
+import { TicketStatus } from "@/generated/prisma/enums";
 
 export default async function SalesDashboard() {
   const user = await getCurrentUser();
   if (!user) return null;
 
   const where = { createdById: user.userId };
+  const activeWhere = { ...where, status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] } };
 
-  const [total, newCount, inProgress, approved, recentTickets] =
+  const [total, newCount, inProgress, recentTickets] =
     await Promise.all([
-      db.ticket.count({ where }),
+      db.ticket.count({ where: activeWhere }),
       db.ticket.count({ where: { ...where, status: "LEAD" } }),
       db.ticket.count({
         where: {
@@ -21,9 +23,8 @@ export default async function SalesDashboard() {
           },
         },
       }),
-      db.ticket.count({ where: { ...where, status: "APPROVED" } }),
       db.ticket.findMany({
-        where,
+        where: activeWhere,
         orderBy: { createdAt: "desc" },
         take: 5,
         include: {
@@ -33,10 +34,9 @@ export default async function SalesDashboard() {
     ]);
 
   const stats = [
-    { label: "My Tickets", value: total, color: "bg-blue-500" },
-    { label: "New Clients", value: newCount, color: "bg-green-500" },
+    { label: "Active Cases", value: total, color: "bg-blue-500" },
+    { label: "New Leads", value: newCount, color: "bg-green-500" },
     { label: "In Progress", value: inProgress, color: "bg-yellow-500" },
-    { label: "Approved", value: approved, color: "bg-emerald-500" },
   ];
 
   return (
@@ -50,12 +50,6 @@ export default async function SalesDashboard() {
             Sales Dashboard — Create and track your leads
           </p>
         </div>
-        <Link
-          href="/sales/tickets/new"
-          className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-        >
-          + New Ticket
-        </Link>
       </div>
 
       {/* Stats Cards */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { StatusBadge, STATUS_CONFIG } from "@/components/ui/status-badge";
+import { CASE_CONFIG } from "@/constants/cases";
 
 interface Ticket {
   id: string;
@@ -10,6 +11,7 @@ interface Ticket {
   clientName: string;
   clientPhone: string;
   clientEmail: string | null;
+  caseType: string | null;
   status: string;
   priority: number;
   updatedAt: string;
@@ -40,7 +42,7 @@ export function MyCasesPage({
   basePath,
   roleLabel,
 }: {
-  basePath: string; // e.g. "/admin/tickets", "/sales/tickets"
+  basePath: string;
   roleLabel: string;
 }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -49,12 +51,16 @@ export function MyCasesPage({
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("recent");
   const [statusFilter, setStatusFilter] = useState("");
+  const [caseTypeFilter, setCaseTypeFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
 
   const fetchCases = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ sort });
       if (statusFilter) params.set("status", statusFilter);
+      if (caseTypeFilter) params.set("caseType", caseTypeFilter);
+      if (priorityFilter) params.set("priority", priorityFilter);
       const res = await fetch(`/api/my-cases?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -66,13 +72,14 @@ export function MyCasesPage({
       // silently fail
     }
     setLoading(false);
-  }, [sort, statusFilter]);
+  }, [sort, statusFilter, caseTypeFilter, priorityFilter]);
 
   useEffect(() => {
     fetchCases();
   }, [fetchCases]);
 
   const allCount = statusCounts.reduce((sum, s) => sum + s.count, 0);
+  const caseTypes = Object.entries(CASE_CONFIG);
 
   return (
     <div>
@@ -84,22 +91,58 @@ export function MyCasesPage({
           </p>
         </div>
 
-        {/* Sort Dropdown */}
+        <div className="flex items-center gap-3">
+          {/* Sort Dropdown */}
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Filter Dropdowns */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          value={caseTypeFilter}
+          onChange={(e) => setCaseTypeFilter(e.target.value)}
           className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
         >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+          <option value="">All Case Types</option>
+          {caseTypes.map(([key, config]) => (
+            <option key={key} value={key}>{config.label}</option>
           ))}
         </select>
+
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        >
+          <option value="">All Priorities</option>
+          <option value="0">Normal</option>
+          <option value="1">High</option>
+          <option value="2">Urgent</option>
+        </select>
+
+        {(caseTypeFilter || priorityFilter) && (
+          <button
+            onClick={() => { setCaseTypeFilter(""); setPriorityFilter(""); }}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {/* Status Filter Tabs */}
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter("")}
           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${

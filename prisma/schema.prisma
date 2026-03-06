@@ -98,6 +98,8 @@ enum DocumentType {
 }
 
 enum PaymentType {
+  INITIAL_PAYMENT
+  FINAL_PAYMENT
   CONSULTATION_FEE
   SERVICE_FEE
   GOVERNMENT_FEE
@@ -242,7 +244,7 @@ model Payment {
   id        String        @id @default(cuid())
   amount    Float
   currency  String        @default("GBP")
-  type      PaymentType   @default(SERVICE_FEE)
+  type      PaymentType   @default(OTHER)
   status    PaymentStatus @default(PENDING)
   notes     String?
   paidAt    DateTime?

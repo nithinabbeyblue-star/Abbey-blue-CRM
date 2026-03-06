@@ -9,8 +9,8 @@ import { triggerEvent } from "@/lib/pusher";
 const createPaymentSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
   currency: z.string().default("GBP"),
-  type: z.enum(["CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE", "OTHER"]),
-  status: z.enum(["PENDING", "PAID", "REFUNDED"]).default("PENDING"),
+  type: z.enum(["INITIAL_PAYMENT", "FINAL_PAYMENT", "OTHER", "CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE"]),
+  status: z.enum(["PENDING", "PAID", "REFUNDED"]).default("PAID"),
   notes: z.string().optional(),
   paidAt: z.string().optional(), // ISO date string
 });
@@ -18,7 +18,7 @@ const createPaymentSchema = z.object({
 const updatePaymentSchema = z.object({
   paymentId: z.string().min(1),
   amount: z.number().positive().optional(),
-  type: z.enum(["CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE", "OTHER"]).optional(),
+  type: z.enum(["INITIAL_PAYMENT", "FINAL_PAYMENT", "OTHER", "CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE"]).optional(),
   status: z.enum(["PENDING", "PAID", "REFUNDED"]).optional(),
   notes: z.string().optional(),
   paidAt: z.string().nullable().optional(),

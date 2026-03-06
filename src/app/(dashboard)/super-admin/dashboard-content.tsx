@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { STATUS_CONFIG, ORDERED_STATUSES } from "@/components/ui/status-badge";
 import { StagnantCases } from "@/components/governance/stagnant-cases";
+import { TicketStatus } from "@/generated/prisma/enums";
 
 export async function SuperAdminDashboardContent() {
   const [
@@ -11,7 +12,7 @@ export async function SuperAdminDashboardContent() {
     rejectedCount,
     paidRevenue,
     statusCounts,
-    recentActivity,
+    activeCases,
     stagnantTickets,
   ] = await Promise.all([
     db.ticket.count(),
@@ -26,18 +27,29 @@ export async function SuperAdminDashboardContent() {
       by: ["status"],
       _count: { id: true },
     }),
-    db.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: {
-        user: { select: { name: true } },
-        ticket: { select: { refNumber: true } },
+    db.ticket.findMany({
+      where: {
+        status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        refNumber: true,
+        clientName: true,
+        clientPhone: true,
+        caseType: true,
+        status: true,
+        priority: true,
+        updatedAt: true,
+        assignedTo: { select: { name: true } },
+        createdBy: { select: { name: true } },
       },
     }),
     db.ticket.findMany({
       where: {
         updatedAt: { lt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-        status: { notIn: ["APPROVED", "REJECTED"] },
+        status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] },
       },
       select: {
         id: true,
@@ -58,6 +70,12 @@ export async function SuperAdminDashboardContent() {
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+
+  const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
+    0: { label: "Normal", color: "text-muted" },
+    1: { label: "High", color: "text-orange-600" },
+    2: { label: "Urgent", color: "text-red-600 font-bold" },
+  };
 
   const stats = [
     { label: "Total Tickets", value: String(totalTickets), color: "bg-blue-500" },
@@ -131,41 +149,66 @@ export async function SuperAdminDashboardContent() {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Activity</h2>
-          {recentActivity.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted">No activity yet.</p>
+        {/* Active Cases — replaces Recent Activity */}
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Active Cases</h2>
+            <Link href="/super-admin/tickets" className="text-sm text-primary hover:underline">View all</Link>
+          </div>
+          {activeCases.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted">No active cases.</p>
           ) : (
-            <div className="space-y-3">
-              {recentActivity.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0"
-                >
-                  <div className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground">
-                      <span className="font-medium">{log.user.name}</span>{" "}
-                      {log.action.replace(/_/g, " ").toLowerCase()}
-                      {log.ticket && (
-                        <>
-                          {" on "}
-                          <span className="font-medium">{log.ticket.refNumber}</span>
-                        </>
-                      )}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {new Date(log.createdAt).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-gray-50/50">
+                  <th className="px-4 py-3 text-left font-medium text-muted">Ref</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted">Client</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted">Priority</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted">Assigned To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeCases.map((ticket) => {
+                  const pri = PRIORITY_LABELS[ticket.priority] || PRIORITY_LABELS[0];
+                  return (
+                    <tr
+                      key={ticket.id}
+                      className="border-b border-border last:border-0 hover:bg-gray-50/50"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/super-admin/tickets/${ticket.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {ticket.refNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-foreground">{ticket.clientName}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
+                            STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
+                          } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
+                        >
+                          {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs ${pri.color}`}>{pri.label}</span>
+                      </td>
+                      <td className="px-4 py-3 text-muted">
+                        {ticket.assignedTo?.name || (
+                          <span className="text-xs text-amber-600 font-medium">Unassigned</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>

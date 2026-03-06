@@ -13,7 +13,7 @@ export async function GET() {
   if (error) return error;
 
   const admins = await db.user.findMany({
-    where: { role: { in: [Role.ADMIN, Role.ADMIN_MANAGER] }, status: "ACTIVE" },
+    where: { role: { in: [Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN] }, status: "ACTIVE" },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
