@@ -9,6 +9,7 @@ declare module "next-auth" {
   interface User {
     role: string;
     sessionVersion: number;
+    mustSetPassword: boolean;
   }
 }
 
@@ -20,6 +21,7 @@ declare module "next-auth" {
       name: string;
       role: string;
       sessionVersion: number;
+      mustSetPassword: boolean;
     };
   }
 }
@@ -100,8 +102,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           sessionVersion: user.sessionVersion,
+          mustSetPassword: user.mustSetPassword,
         };
         } catch (err) {
+          // Re-throw known auth errors so the login page can distinguish them
+          if (err instanceof Error) {
+            const known = ["PENDING_ACTIVATION", "PENDING_APPROVAL", "ACCOUNT_SUSPENDED"];
+            if (known.includes(err.message)) throw err;
+          }
           console.error("[Auth] Login error:", err);
           throw new Error("LOGIN_UNAVAILABLE");
         }

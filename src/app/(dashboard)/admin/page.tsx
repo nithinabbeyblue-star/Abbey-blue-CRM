@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { Role } from "@/generated/prisma/enums";
 import { STATUS_CONFIG } from "@/components/ui/status-badge";
+import { calcVat, formatCurrency } from "@/constants/finance";
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser();
@@ -13,7 +14,7 @@ export default async function AdminDashboard() {
   // Key Coordinator sees all tickets, Admin sees only assigned
   const where = isCoordinator ? {} : { assignedToId: user.userId };
 
-  const [total, unassigned, docCollection, submitted, approved, recentTickets] =
+  const [total, unassigned, docCollection, submitted, approved, recentTickets, financials] =
     await Promise.all([
       db.ticket.count({ where }),
       db.ticket.count({ where: { assignedToId: null } }),
@@ -31,7 +32,18 @@ export default async function AdminDashboard() {
           assignedTo: { select: { name: true } },
         },
       }),
+      isCoordinator
+        ? db.ticket.aggregate({
+            _sum: { paidAmount: true, ablFee: true, adsFee: true },
+          })
+        : null,
     ]);
+
+  // Financial Health calculations (KC/SA only)
+  const grossRevenue = financials?._sum.paidAmount ?? 0;
+  const vatLiability = calcVat(financials?._sum.ablFee ?? 0);
+  const totalAdsFees = financials?._sum.adsFee ?? 0;
+  const netProfit = Math.round((grossRevenue - vatLiability - totalAdsFees) * 100) / 100;
 
   const stats = isCoordinator
     ? [
@@ -69,6 +81,38 @@ export default async function AdminDashboard() {
           </Link>
         )}
       </div>
+
+      {/* Executive Financial Summary — KC/SA only */}
+      {isCoordinator && (
+        <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
+            Financial Health
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            <div>
+              <p className="text-xs font-medium text-muted">Gross Revenue</p>
+              <p className="mt-1 text-2xl font-bold text-blue-600">
+                {formatCurrency(grossRevenue)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">Total paid by clients</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted">Tax Liability (VAT 23%)</p>
+              <p className="mt-1 text-2xl font-bold text-orange-600">
+                {formatCurrency(vatLiability)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">To be set aside for Revenue</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted">Net Profit</p>
+              <p className={`mt-1 text-2xl font-bold ${netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {formatCurrency(netProfit)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">After VAT & ADS fees</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

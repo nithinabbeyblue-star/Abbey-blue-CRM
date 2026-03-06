@@ -14,8 +14,19 @@ interface User {
   gender: string | null;
   contactNumber: string | null;
   homeAddress: string | null;
+  lastLoginCity: string | null;
+  lastLoginCountry: string | null;
   createdAt: string;
   _count: { createdTickets: number; assignedTickets: number };
+}
+
+function generatePassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+  let pw = "";
+  for (let i = 0; i < 12; i++) {
+    pw += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return pw;
 }
 
 const ROLES = ["SUPER_ADMIN", "KEY_COORDINATOR", "SALES", "ADMIN"];
@@ -49,15 +60,27 @@ export default function UsersPage() {
     gender: "",
     contactNumber: "",
     homeAddress: "",
+    tempPassword: "",
   });
   const [message, setMessage] = useState({ text: "", type: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [killingAll, setKillingAll] = useState(false);
 
   const fetchUsers = useCallback(async () => {
-    const res = await fetch("/api/users");
-    const data = await res.json();
-    setUsers(data.users || []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/users");
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
+      setUsers(data.users || []);
+      if (!res.ok && data.error) {
+        setMessage({ text: data.error, type: "error" });
+      }
+    } catch {
+      setUsers([]);
+      setMessage({ text: "Failed to load users", type: "error" });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -75,6 +98,7 @@ export default function UsersPage() {
       gender: "",
       contactNumber: "",
       homeAddress: "",
+      tempPassword: "",
     });
     setEditingUser(null);
     setShowForm(false);
@@ -92,6 +116,7 @@ export default function UsersPage() {
       gender: user.gender || "",
       contactNumber: user.contactNumber || "",
       homeAddress: user.homeAddress || "",
+      tempPassword: "",
     });
     setShowForm(true);
   }
@@ -129,7 +154,7 @@ export default function UsersPage() {
           setMessage({ text: data.error || "Failed to update", type: "error" });
         }
       } else {
-        // Create — no password field
+        // Create — with optional temp password
         const res = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -142,11 +167,17 @@ export default function UsersPage() {
             gender: formData.gender || undefined,
             contactNumber: formData.contactNumber || undefined,
             homeAddress: formData.homeAddress || undefined,
+            tempPassword: formData.tempPassword || undefined,
           }),
         });
 
         if (res.ok) {
-          setMessage({ text: "User created successfully (PENDING — awaiting password set)", type: "success" });
+          setMessage({
+            text: formData.tempPassword
+              ? `User created with temp password. Credentials sent to admin email.`
+              : "User created (PENDING — awaiting password set)",
+            type: "success",
+          });
           resetForm();
           fetchUsers();
         } else {
@@ -196,6 +227,33 @@ export default function UsersPage() {
     }
   }
 
+  async function handleKillAllSessions() {
+    if (!confirm("Are you sure you want to kill ALL non-admin sessions? This will force every Sales, Admin, and Key Coordinator user to re-login immediately.")) {
+      return;
+    }
+
+    setKillingAll(true);
+    setMessage({ text: "", type: "" });
+
+    try {
+      const res = await fetch("/api/governance/kill-all-sessions", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setMessage({
+          text: `Successfully killed ${data.count} user session${data.count !== 1 ? "s" : ""}. All non-admin users must re-login.`,
+          type: "success",
+        });
+      } else {
+        const data = await res.json();
+        setMessage({ text: data.error || "Failed to kill sessions", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Failed to kill sessions", type: "error" });
+    }
+
+    setKillingAll(false);
+  }
+
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted">Loading users...</div>;
   }
@@ -207,12 +265,21 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
           <p className="mt-1 text-sm text-muted">Create and manage employee accounts</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowForm(!showForm); }}
-          className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-        >
-          {showForm ? "Cancel" : "+ New User"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleKillAllSessions}
+            disabled={killingAll}
+            className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+          >
+            {killingAll ? "Killing..." : "Kill All Sessions"}
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowForm(!showForm); }}
+            className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+          >
+            {showForm ? "Cancel" : "+ New User"}
+          </button>
+        </div>
       </div>
 
       {message.text && (
@@ -341,12 +408,33 @@ export default function UsersPage() {
                 />
               </div>
             )}
+            {!editingUser && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Temporary Password
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={formData.tempPassword}
+                    onChange={(e) => setFormData({ ...formData, tempPassword: e.target.value })}
+                    minLength={8}
+                    placeholder="Generate or enter a temp password"
+                    className="flex-1 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, tempPassword: generatePassword() })}
+                    className="rounded-lg border border-primary bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10"
+                  >
+                    Generate
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  If set, credentials will be emailed to the admin. The user will be forced to change this after approval.
+                </p>
+              </div>
+            )}
           </div>
-          {!editingUser && (
-            <p className="mt-3 text-xs text-muted">
-              No password needed — the user will set their own password on first login.
-            </p>
-          )}
           <div className="mt-4 flex gap-3">
             <button
               type="submit"
@@ -376,6 +464,7 @@ export default function UsersPage() {
               <th className="px-4 py-3 text-left font-medium text-muted">Employee ID</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Role</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
+              <th className="px-4 py-3 text-left font-medium text-muted">Location</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Tickets</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Joined</th>
               <th className="px-4 py-3 text-left font-medium text-muted">Actions</th>
@@ -386,11 +475,14 @@ export default function UsersPage() {
               <tr key={user.id} className="border-b border-border last:border-0 hover:bg-gray-50/50">
                 <td className="px-4 py-3">
                   <p className="font-medium text-foreground">{user.name}</p>
-                  {user.mustSetPassword && user.status === "PENDING" && (
-                    <p className="text-xs text-yellow-600">Awaiting password</p>
+                  {user.status === "PENDING" && !user.mustSetPassword && (
+                    <p className="text-xs text-amber-600">Awaiting first login</p>
                   )}
-                  {!user.mustSetPassword && user.status === "PENDING" && (
+                  {user.status === "PENDING" && user.mustSetPassword && (
                     <p className="text-xs text-blue-600">Ready for approval</p>
+                  )}
+                  {user.status === "ACTIVE" && user.mustSetPassword && (
+                    <p className="text-xs text-orange-600">Changing password</p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted">{user.email}</td>
@@ -404,6 +496,11 @@ export default function UsersPage() {
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[user.status] || "bg-gray-100 text-gray-700"}`}>
                     {user.status}
                   </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted">
+                  {user.lastLoginCity && user.lastLoginCountry
+                    ? `${user.lastLoginCity}, ${user.lastLoginCountry}`
+                    : "—"}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
                   {user._count.createdTickets > 0 && `${user._count.createdTickets} created`}
@@ -423,8 +520,8 @@ export default function UsersPage() {
                       Edit
                     </button>
 
-                    {/* PENDING + password set → Grant Access */}
-                    {user.status === "PENDING" && !user.mustSetPassword && (
+                    {/* PENDING → Grant Access (API validates password exists) */}
+                    {user.status === "PENDING" && (
                       <button
                         onClick={() => handleAction(user.id, "grant_access")}
                         className="rounded border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-100"

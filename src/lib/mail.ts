@@ -17,7 +17,7 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
   }
 
   await resend.emails.send({
-    from: "Abbey CRM <noreply@abbeylegal.com>",
+    from: process.env.EMAIL_FROM || "Abbey CRM <onboarding@resend.dev>",
     to,
     subject,
     html,

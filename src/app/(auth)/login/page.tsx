@@ -10,7 +10,12 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
+  const [info, setInfo] = useState(() => {
+    const p = searchParams;
+    if (p.get("approved") === "1") return "Your access has been approved! Please sign in.";
+    if (p.get("passwordChanged") === "1") return "Password changed successfully. Please sign in with your new password.";
+    return "";
+  });
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -34,7 +39,7 @@ function LoginForm() {
           return;
         }
         if (errMsg.includes("PENDING_APPROVAL")) {
-          setInfo("Your password has been set. Please wait for your administrator to grant access.");
+          router.push(`/waiting-room?email=${encodeURIComponent(email)}`);
           return;
         }
         if (errMsg.includes("ACCOUNT_SUSPENDED")) {
@@ -80,7 +85,11 @@ function LoginForm() {
           )}
 
           {info && (
-            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+              searchParams.get("approved") || searchParams.get("passwordChanged")
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-blue-200 bg-blue-50 text-blue-700"
+            }`}>
               {info}
             </div>
           )}

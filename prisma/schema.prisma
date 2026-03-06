@@ -121,6 +121,7 @@ enum NotificationType {
   DOCUMENT_UPLOAD
   STATUS_CHANGE
   NEW_MESSAGE
+  ACCESS_REQUEST
 }
 
 // ─── Models ──────────────────────────────────────────────
@@ -134,6 +135,11 @@ model User {
   status          UserStatus @default(PENDING)
   mustSetPassword Boolean    @default(true)
   sessionVersion  Int        @default(0)
+
+  // Geo-IP (last login attempt)
+  lastLoginIp      String?
+  lastLoginCity    String?
+  lastLoginCountry String?
 
   // Employee profile
   employeeId    String?  @unique

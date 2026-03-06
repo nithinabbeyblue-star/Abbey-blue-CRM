@@ -26,6 +26,11 @@ export default function NewTicketPage() {
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [attempted, setAttempted] = useState(false);
+  const [duplicates, setDuplicates] = useState<Array<{
+    id: string; refNumber: string; clientName: string;
+    clientPhone: string; clientEmail: string | null; status: string;
+  }>>([]);
+  const [duplicateDismissed, setDuplicateDismissed] = useState(false);
 
   const total = calcTotal(ablFee, govFee, adverts, adsFee);
   const amountDue = calcDue(total, paidAmount);
@@ -54,6 +59,28 @@ export default function NewTicketPage() {
     if (adverts == null) errors.adverts = "Adverts is required";
 
     return errors;
+  }
+
+  async function checkDuplicates(phone: string, email: string) {
+    if ((!phone || phone.length < 6) && (!email || !email.includes("@"))) return;
+    try {
+      const res = await fetch("/api/governance/duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone || undefined, email: email || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.matches?.length > 0) {
+          setDuplicates(data.matches);
+          setDuplicateDismissed(false);
+        } else {
+          setDuplicates([]);
+        }
+      }
+    } catch {
+      // Silently fail — duplicate check is non-blocking
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -172,6 +199,11 @@ export default function NewTicketPage() {
                 name="clientPhone"
                 placeholder="e.g. +44 7700 900000"
                 className={inputClass("clientPhone")}
+                onBlur={(e) => {
+                  const form = e.target.form;
+                  const email = (form?.elements.namedItem("clientEmail") as HTMLInputElement)?.value || "";
+                  checkDuplicates(e.target.value, email);
+                }}
               />
               {attempted && fieldErrors.clientPhone && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.clientPhone}</p>
@@ -186,6 +218,11 @@ export default function NewTicketPage() {
                 type="email"
                 placeholder="e.g. john@example.com"
                 className={inputClass("clientEmail")}
+                onBlur={(e) => {
+                  const form = e.target.form;
+                  const phone = (form?.elements.namedItem("clientPhone") as HTMLInputElement)?.value || "";
+                  checkDuplicates(phone, e.target.value);
+                }}
               />
               {attempted && fieldErrors.clientEmail && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.clientEmail}</p>
@@ -238,6 +275,53 @@ export default function NewTicketPage() {
             </div>
           </div>
         </div>
+
+        {/* Duplicate Warning */}
+        {duplicates.length > 0 && !duplicateDismissed && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <h3 className="text-sm font-semibold text-amber-800">Potential Duplicate Detected</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDuplicateDismissed(true)}
+                className="text-xs font-medium text-amber-600 hover:text-amber-800"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-amber-700">
+              The following existing tickets match the phone number or email you entered:
+            </p>
+            <div className="mt-3 space-y-2">
+              {duplicates.map((d) => (
+                <div key={d.id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-white px-4 py-2.5">
+                  <div>
+                    <span className="text-sm font-medium text-foreground">{d.clientName}</span>
+                    <span className="mx-2 text-muted">|</span>
+                    <span className="text-xs text-muted">{d.clientPhone}</span>
+                    {d.clientEmail && <span className="ml-2 text-xs text-muted">{d.clientEmail}</span>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-amber-700">{d.refNumber}</span>
+                    <a
+                      href={`/sales/tickets/${d.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      View
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Case Details */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">

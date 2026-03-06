@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 
 // Paths that don't require authentication
-const publicPaths = ["/login", "/activate", "/api/auth"];
+const publicPaths = ["/login", "/activate", "/waiting-room", "/change-password", "/api/auth"];
 
 function isPublicPath(path: string): boolean {
   return publicPaths.some((p) => path.startsWith(p));
@@ -60,6 +60,16 @@ export default auth((request) => {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Force password change — if mustSetPassword is true, only allow /change-password and /api/auth
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mustChange = (user as any)?.mustSetPassword === true;
+  if (mustChange && !pathname.startsWith("/change-password") && !pathname.startsWith("/api/auth")) {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Password change required" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
   // Root path → redirect to role-based dashboard

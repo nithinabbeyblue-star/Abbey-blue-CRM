@@ -13,6 +13,7 @@ export const authConfig = {
         token.userId = user.id;
         token.role = user.role;
         token.sessionVersion = user.sessionVersion;
+        token.mustSetPassword = user.mustSetPassword;
       }
       return token;
     },
@@ -20,6 +21,7 @@ export const authConfig = {
       session.user.id = token.userId as string;
       session.user.role = token.role as string;
       session.user.sessionVersion = token.sessionVersion as number;
+      session.user.mustSetPassword = token.mustSetPassword as boolean;
       return session;
     },
   },

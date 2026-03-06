@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { STATUS_CONFIG, ORDERED_STATUSES } from "@/components/ui/status-badge";
+import { StagnantCases } from "@/components/governance/stagnant-cases";
 
 export async function SuperAdminDashboardContent() {
   const [
@@ -11,6 +12,7 @@ export async function SuperAdminDashboardContent() {
     paidRevenue,
     statusCounts,
     recentActivity,
+    stagnantTickets,
   ] = await Promise.all([
     db.ticket.count(),
     db.user.count({ where: { status: "ACTIVE" } }),
@@ -31,6 +33,22 @@ export async function SuperAdminDashboardContent() {
         user: { select: { name: true } },
         ticket: { select: { refNumber: true } },
       },
+    }),
+    db.ticket.findMany({
+      where: {
+        updatedAt: { lt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
+        status: { notIn: ["APPROVED", "REJECTED"] },
+      },
+      select: {
+        id: true,
+        refNumber: true,
+        clientName: true,
+        status: true,
+        updatedAt: true,
+        assignedTo: { select: { id: true, name: true } },
+        createdBy: { select: { name: true } },
+      },
+      orderBy: { updatedAt: "asc" },
     }),
   ]);
 
@@ -151,6 +169,13 @@ export async function SuperAdminDashboardContent() {
           )}
         </div>
       </div>
+
+      <StagnantCases
+        tickets={stagnantTickets.map((t) => ({
+          ...t,
+          updatedAt: t.updatedAt.toISOString(),
+        }))}
+      />
     </>
   );
 }

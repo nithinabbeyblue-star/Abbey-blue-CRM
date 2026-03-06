@@ -50,7 +50,7 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      if (existingUser.mustSetPassword) {
+      if (!existingUser.passwordHash) {
         return NextResponse.json(
           { error: "User has not set their password yet" },
           { status: 400 }
@@ -59,8 +59,15 @@ export async function PATCH(
 
       const updated = await db.user.update({
         where: { id },
-        data: { status: "ACTIVE" },
-        select: { id: true, email: true, name: true, role: true, status: true, employeeId: true, createdAt: true },
+        data: {
+          status: "ACTIVE",
+          mustSetPassword: true, // Force password change after approval
+        },
+        select: {
+          id: true, email: true, name: true, role: true, status: true,
+          mustSetPassword: true, employeeId: true,
+          lastLoginCity: true, lastLoginCountry: true, createdAt: true,
+        },
       });
 
       await createAuditLog({
