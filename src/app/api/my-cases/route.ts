@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   } else if (user.role === Role.ADMIN) {
     where = { assignedToId: user.userId };
   }
-  // KC and SA see all
+  // SALES_MANAGER, ADMIN_MANAGER and SA see all
 
   if (status) {
     where.status = status;

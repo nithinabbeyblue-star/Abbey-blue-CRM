@@ -15,7 +15,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;

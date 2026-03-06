@@ -29,7 +29,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -114,7 +114,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireRole(Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { error } = await requireRole(Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;

@@ -11,7 +11,7 @@ import { sendMail } from "@/lib/mail";
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1, "Name is required"),
-  role: z.enum(["SUPER_ADMIN", "KEY_COORDINATOR", "SALES", "ADMIN"]),
+  role: z.enum(["SUPER_ADMIN", "SALES_MANAGER", "ADMIN_MANAGER", "SALES", "ADMIN"]),
   employeeId: z.string().min(1, "Employee ID is required"),
   age: z.string().optional(),
   gender: z.string().optional(),

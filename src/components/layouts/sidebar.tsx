@@ -30,7 +30,7 @@ interface SearchResult {
 
 function getTicketPath(role: string, ticketId: string): string {
   if (role === "SUPER_ADMIN") return `/super-admin/tickets/${ticketId}`;
-  if (role === "SALES") return `/sales/tickets/${ticketId}`;
+  if (role === "SALES" || role === "SALES_MANAGER") return `/sales/tickets/${ticketId}`;
   return `/admin/tickets/${ticketId}`;
 }
 

@@ -215,7 +215,3 @@ export const CASE_CONFIG: Record<CaseTypeKey, CaseTypeConfig> = {
 export function getAllCaseTypes(): CaseTypeConfig[] {
   return Object.values(CASE_CONFIG);
 }
-
-export function getCaseConfig(caseType: CaseTypeKey): CaseTypeConfig {
-  return CASE_CONFIG[caseType];
-}

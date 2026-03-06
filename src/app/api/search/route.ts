@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   } else if (user.role === Role.ADMIN) {
     where.assignedToId = user.userId;
   }
-  // KEY_COORDINATOR and SUPER_ADMIN see all
+  // SALES_MANAGER, ADMIN_MANAGER and SUPER_ADMIN see all
 
   const results = await db.ticket.findMany({
     where,

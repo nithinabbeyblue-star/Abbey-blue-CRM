@@ -24,7 +24,7 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
   });
 }
 
-export async function notifyKeyCoordinator(ticket: {
+export async function notifyManagers(ticket: {
   refNumber: string;
   clientName: string;
   clientPhone: string;
@@ -33,14 +33,14 @@ export async function notifyKeyCoordinator(ticket: {
   source: string;
   createdByName: string;
 }) {
-  const coordinatorEmail = process.env.KEY_COORDINATOR_EMAIL;
-  if (!coordinatorEmail) {
-    console.log("[Mail] KEY_COORDINATOR_EMAIL not set, skipping notification");
+  const managerEmail = process.env.SUPER_ADMIN_EMAIL;
+  if (!managerEmail) {
+    console.log("[Mail] SUPER_ADMIN_EMAIL not set, skipping notification");
     return;
   }
 
   await sendMail({
-    to: coordinatorEmail,
+    to: managerEmail,
     subject: `New Lead: ${ticket.refNumber} — ${ticket.clientName}`,
     html: `
       <h2>New Ticket Created</h2>

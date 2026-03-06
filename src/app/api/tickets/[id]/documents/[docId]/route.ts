@@ -9,7 +9,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
-  const { user, error } = await requireRole(Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id, docId } = await params;

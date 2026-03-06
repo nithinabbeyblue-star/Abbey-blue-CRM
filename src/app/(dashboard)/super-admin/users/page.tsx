@@ -29,12 +29,13 @@ function generatePassword(): string {
   return pw;
 }
 
-const ROLES = ["SUPER_ADMIN", "KEY_COORDINATOR", "SALES", "ADMIN"];
+const ROLES = ["SUPER_ADMIN", "SALES_MANAGER", "ADMIN_MANAGER", "SALES", "ADMIN"];
 const GENDERS = ["Male", "Female", "Other"];
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-700",
-  KEY_COORDINATOR: "bg-blue-100 text-blue-700",
+  SALES_MANAGER: "bg-teal-100 text-teal-700",
+  ADMIN_MANAGER: "bg-blue-100 text-blue-700",
   SALES: "bg-green-100 text-green-700",
   ADMIN: "bg-orange-100 text-orange-700",
 };

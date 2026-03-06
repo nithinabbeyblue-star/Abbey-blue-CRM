@@ -14,8 +14,10 @@ function getDashboardForRole(role: string): string {
   switch (role) {
     case "SUPER_ADMIN":
       return "/super-admin";
-    case "KEY_COORDINATOR":
+    case "ADMIN_MANAGER":
       return "/admin";
+    case "SALES_MANAGER":
+      return "/sales";
     case "ADMIN":
       return "/admin";
     case "SALES":
@@ -28,7 +30,8 @@ function getDashboardForRole(role: string): string {
 // Role → allowed path prefixes (duplicated to keep middleware edge-compatible)
 const rolePathMap: Record<string, string[]> = {
   SUPER_ADMIN: ["/super-admin", "/api/"],
-  KEY_COORDINATOR: ["/admin", "/api/"],
+  ADMIN_MANAGER: ["/admin", "/api/"],
+  SALES_MANAGER: ["/sales", "/api/"],
   ADMIN: ["/admin", "/api/"],
   SALES: ["/sales", "/api/"],
 };

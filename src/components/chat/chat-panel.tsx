@@ -32,9 +32,10 @@ interface PendingFile {
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "text-purple-600",
-  KEY_COORDINATOR: "text-blue-600",
+  ADMIN_MANAGER: "text-blue-600",
+  SALES_MANAGER: "text-orange-600",
   ADMIN: "text-green-600",
-  SALES: "text-orange-600",
+  SALES: "text-amber-600",
 };
 
 export function ChatPanel({

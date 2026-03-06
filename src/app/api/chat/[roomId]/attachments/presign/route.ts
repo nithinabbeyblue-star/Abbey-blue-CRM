@@ -18,12 +18,19 @@ export async function POST(
 
   const { roomId } = await params;
 
-  // Verify membership
-  const membership = await db.chatRoomMember.findUnique({
+  // Verify membership — auto-add managers and super admins
+  let membership = await db.chatRoomMember.findUnique({
     where: { chatRoomId_userId: { chatRoomId: roomId, userId: user.userId } },
   });
   if (!membership) {
-    return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    const autoJoinRoles = ["SUPER_ADMIN", "ADMIN_MANAGER", "SALES_MANAGER"];
+    if (autoJoinRoles.includes(user.role)) {
+      membership = await db.chatRoomMember.create({
+        data: { chatRoomId: roomId, userId: user.userId },
+      });
+    } else {
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    }
   }
 
   try {

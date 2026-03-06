@@ -55,8 +55,9 @@ export async function GET(
 ) {
   const { user, error } = await requireRole(
     Role.SALES,
+    Role.SALES_MANAGER,
     Role.ADMIN,
-    Role.KEY_COORDINATOR,
+    Role.ADMIN_MANAGER,
     Role.SUPER_ADMIN
   );
   if (error) return error;
@@ -98,7 +99,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -322,7 +323,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.KEY_COORDINATOR, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;

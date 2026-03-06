@@ -9,10 +9,10 @@ export default async function AdminDashboard() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const isCoordinator = user.role === Role.KEY_COORDINATOR || user.role === Role.SUPER_ADMIN;
+  const isManager = user.role === Role.ADMIN_MANAGER || user.role === Role.SUPER_ADMIN;
 
-  // Key Coordinator sees all tickets, Admin sees only assigned
-  const where = isCoordinator ? {} : { assignedToId: user.userId };
+  // Admin Manager sees all tickets, Admin sees only assigned
+  const where = isManager ? {} : { assignedToId: user.userId };
 
   const [total, unassigned, docCollection, submitted, approved, recentTickets, financials] =
     await Promise.all([
@@ -32,20 +32,20 @@ export default async function AdminDashboard() {
           assignedTo: { select: { name: true } },
         },
       }),
-      isCoordinator
+      isManager
         ? db.ticket.aggregate({
             _sum: { paidAmount: true, ablFee: true, adsFee: true },
           })
         : null,
     ]);
 
-  // Financial Health calculations (KC/SA only)
+  // Financial Health calculations (Manager/SA only)
   const grossRevenue = financials?._sum.paidAmount ?? 0;
   const vatLiability = calcVat(financials?._sum.ablFee ?? 0);
   const totalAdsFees = financials?._sum.adsFee ?? 0;
   const netProfit = Math.round((grossRevenue - vatLiability - totalAdsFees) * 100) / 100;
 
-  const stats = isCoordinator
+  const stats = isManager
     ? [
         { label: "Total Tickets", value: total, color: "bg-blue-500" },
         { label: "Unassigned", value: unassigned, color: "bg-red-500" },
@@ -67,12 +67,12 @@ export default async function AdminDashboard() {
             Welcome back, {user.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            {isCoordinator
-              ? "Key Coordinator Dashboard — Assign and oversee cases"
+            {isManager
+              ? "Admin Manager Dashboard — Assign and oversee cases"
               : "Admin Dashboard — Manage your assigned cases"}
           </p>
         </div>
-        {isCoordinator && (
+        {isManager && (
           <Link
             href="/admin/assignments"
             className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
@@ -82,8 +82,8 @@ export default async function AdminDashboard() {
         )}
       </div>
 
-      {/* Executive Financial Summary — KC/SA only */}
-      {isCoordinator && (
+      {/* Executive Financial Summary — Manager/SA only */}
+      {isManager && (
         <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
             Financial Health
@@ -136,7 +136,7 @@ export default async function AdminDashboard() {
       <div className="mt-8 rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
-            {isCoordinator ? "Recent Tickets" : "Active Cases"}
+            {isManager ? "Recent Tickets" : "Active Cases"}
           </h2>
           <Link
             href="/admin/tickets"
@@ -147,7 +147,7 @@ export default async function AdminDashboard() {
         </div>
         {recentTickets.length === 0 ? (
           <div className="py-12 text-center text-sm text-muted">
-            {isCoordinator
+            {isManager
               ? "No tickets in the system yet."
               : "No cases assigned to you yet."}
           </div>
@@ -159,7 +159,7 @@ export default async function AdminDashboard() {
                 <th className="px-6 py-3 text-left font-medium text-muted">Client</th>
                 <th className="px-6 py-3 text-left font-medium text-muted">Status</th>
                 <th className="px-6 py-3 text-left font-medium text-muted">
-                  {isCoordinator ? "Assigned To" : "Created By"}
+                  {isManager ? "Assigned To" : "Created By"}
                 </th>
                 <th className="px-6 py-3 text-left font-medium text-muted">Updated</th>
               </tr>
@@ -192,7 +192,7 @@ export default async function AdminDashboard() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-muted">
-                    {isCoordinator
+                    {isManager
                       ? ticket.assignedTo?.name || "Unassigned"
                       : ticket.createdBy?.name}
                   </td>

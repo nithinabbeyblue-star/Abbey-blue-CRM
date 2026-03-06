@@ -11,7 +11,6 @@ interface Ticket {
   clientName: string;
   clientPhone: string;
   caseType: string | null;
-  destination: string | null;
   status: string;
   source: string;
   priority: number;
@@ -114,10 +113,7 @@ export default function AdminTicketsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <CaseBadge caseType={ticket.caseType} />
-                    {ticket.destination && (
-                      <p className="mt-0.5 text-xs text-muted">{ticket.destination}</p>
-                    )}
-                    {!ticket.caseType && !ticket.destination && <span className="text-muted">—</span>}
+                    {!ticket.caseType && <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={ticket.status} />

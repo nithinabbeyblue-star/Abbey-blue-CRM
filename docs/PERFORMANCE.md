@@ -51,7 +51,12 @@
 
 - **Super Admin dashboard**: Stats cards and “Cases by Status” / “Recent Activity” are loaded inside a `<Suspense>` boundary with a skeleton fallback (`DashboardSkeleton`). The shell (header, nav) renders immediately; heavy aggregations stream in so the page is not blocked.
 
-### 4. Caching (Redis & Invalidation)
+### 4. Codebase cleanup (dead code removed)
+
+- **Removed**: `src/app/api/auth/login/route.ts` (stub; login handled by NextAuth), unused component `src/components/tickets/deadline-header.tsx`, and unused `getDownloadUrl()` from `src/lib/google-drive.ts`. Keeps bundle and codebase lean; no major performance impact.
+- **Unused-deps audit**: Run `npx depcheck` occasionally. Reported “unused” packages like `@prisma/client`, `pg`, `tailwindcss`, and `@types/*` are required by the stack (false positives); do not remove them without verifying.
+
+### 5. Caching (Redis & Invalidation)
 
 - **Analytics** use Redis when `REDIS_URL` is set:
   - `analytics:overview` — TTL **300s** (5 min)

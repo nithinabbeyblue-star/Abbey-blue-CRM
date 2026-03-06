@@ -33,10 +33,33 @@ export async function GET(
     return NextResponse.json({ error: "No chat room for this ticket" }, { status: 404 });
   }
 
-  // Check if user is a member
+  // Check if user is a member — auto-add managers and super admins
   const isMember = chatRoom.members.some((m) => m.userId === user.userId);
   if (!isMember) {
-    return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    const autoJoinRoles = ["SUPER_ADMIN", "ADMIN_MANAGER", "SALES_MANAGER"];
+    if (autoJoinRoles.includes(user.role)) {
+      await db.chatRoomMember.create({
+        data: { chatRoomId: chatRoom.id, userId: user.userId },
+      });
+      // Re-fetch with updated members
+      const updated = await db.chatRoom.findUnique({
+        where: { ticketId: id },
+        select: {
+          id: true,
+          ticketId: true,
+          members: {
+            select: {
+              userId: true,
+              lastReadAt: true,
+              user: { select: { id: true, name: true, role: true } },
+            },
+          },
+        },
+      });
+      return NextResponse.json({ chatRoom: updated });
+    } else {
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    }
   }
 
   return NextResponse.json({ chatRoom });

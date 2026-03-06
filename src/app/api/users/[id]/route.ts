@@ -10,7 +10,7 @@ import { createAuditLog, extractIp, extractDevice } from "@/lib/audit";
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  role: z.enum(["SUPER_ADMIN", "KEY_COORDINATOR", "SALES", "ADMIN"]).optional(),
+  role: z.enum(["SUPER_ADMIN", "SALES_MANAGER", "ADMIN_MANAGER", "SALES", "ADMIN"]).optional(),
   password: z.string().min(6).optional(),
   employeeId: z.string().optional(),
   age: z.string().optional().nullable(),

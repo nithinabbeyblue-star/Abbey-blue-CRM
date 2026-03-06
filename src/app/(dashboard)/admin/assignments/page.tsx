@@ -10,7 +10,6 @@ interface Ticket {
   clientName: string;
   clientPhone: string;
   caseType: string | null;
-  destination: string | null;
   status: string;
   source: string;
   priority: number;
@@ -65,7 +64,7 @@ export default function AssignmentsPage() {
         if (meRes.ok) {
           const meData = await meRes.json();
           const role = meData.user?.role;
-          setCanAssign(role === "KEY_COORDINATOR" || role === "SUPER_ADMIN");
+          setCanAssign(role === "ADMIN_MANAGER" || role === "SUPER_ADMIN");
         }
       } catch {
         setMessage({ text: "Failed to load data. Please refresh.", type: "error" });
@@ -170,13 +169,12 @@ export default function AssignmentsPage() {
                     <p className="mt-0.5 text-xs text-muted">
                       <CaseBadge caseType={ticket.caseType} />
                       {!ticket.caseType && "No case type"}
-                      {ticket.destination && ` / ${ticket.destination}`}
                       {" "}&bull;{" "}Source: {ticket.source.replace(/_/g, " ")}
                       {" "}&bull;{" "}By: {ticket.createdBy.name}
                     </p>
                   </div>
 
-                  {/* Assign dropdown — only for KEY_COORDINATOR / SUPER_ADMIN */}
+                  {/* Assign dropdown — only for ADMIN_MANAGER / SUPER_ADMIN */}
                   {canAssign && (
                     <div className="flex items-center gap-2">
                       <select

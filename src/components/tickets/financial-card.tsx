@@ -492,7 +492,7 @@ export function FinancialCard({
                   type="text"
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Optional"
+                  placeholder=""
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </div>

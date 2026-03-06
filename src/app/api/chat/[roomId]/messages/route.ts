@@ -43,12 +43,20 @@ export async function POST(
       return NextResponse.json({ error: "Chat room not found" }, { status: 404 });
     }
 
-    const membership = await db.chatRoomMember.findUnique({
+    let membership = await db.chatRoomMember.findUnique({
       where: { chatRoomId_userId: { chatRoomId: roomId, userId: user.userId } },
     });
 
+    // Auto-add managers and super admins to chat rooms
     if (!membership) {
-      return NextResponse.json({ error: "Not a member of this chat" }, { status: 403 });
+      const autoJoinRoles = ["SUPER_ADMIN", "ADMIN_MANAGER", "SALES_MANAGER"];
+      if (autoJoinRoles.includes(user.role)) {
+        membership = await db.chatRoomMember.create({
+          data: { chatRoomId: roomId, userId: user.userId },
+        });
+      } else {
+        return NextResponse.json({ error: "Not a member of this chat" }, { status: 403 });
+      }
     }
 
     const body = await request.json();
@@ -153,13 +161,20 @@ export async function GET(
 
   const { roomId } = await params;
 
-  // Verify membership
-  const membership = await db.chatRoomMember.findUnique({
+  // Verify membership — auto-add managers and super admins
+  let membership = await db.chatRoomMember.findUnique({
     where: { chatRoomId_userId: { chatRoomId: roomId, userId: user.userId } },
   });
 
   if (!membership) {
-    return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    const autoJoinRoles = ["SUPER_ADMIN", "ADMIN_MANAGER", "SALES_MANAGER"];
+    if (autoJoinRoles.includes(user.role)) {
+      membership = await db.chatRoomMember.create({
+        data: { chatRoomId: roomId, userId: user.userId },
+      });
+    } else {
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    }
   }
 
   const { searchParams } = new URL(request.url);

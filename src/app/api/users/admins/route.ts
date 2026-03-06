@@ -7,7 +7,7 @@ import { Role } from "@/generated/prisma/enums";
 export async function GET() {
   const { error } = await requireRole(
     Role.ADMIN,
-    Role.KEY_COORDINATOR,
+    Role.ADMIN_MANAGER,
     Role.SUPER_ADMIN
   );
   if (error) return error;

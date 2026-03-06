@@ -27,7 +27,6 @@ interface Ticket {
   nationality: string | null;
   address: string | null;
   caseType: string | null;
-  destination: string | null;
   status: string;
   source: string;
   priority: number;

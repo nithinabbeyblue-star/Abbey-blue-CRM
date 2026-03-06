@@ -2,12 +2,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layouts/sidebar";
 
-const salesNav = [
-  { label: "Dashboard", href: "/sales", icon: "\u{1F3E0}" },
-  { label: "New Ticket", href: "/sales/tickets/new", icon: "\u{2795}" },
-  { label: "My Cases", href: "/sales/my-cases", icon: "\u{1F4CB}" },
-];
-
 export default async function SalesLayout({
   children,
 }: {
@@ -16,9 +10,24 @@ export default async function SalesLayout({
   const user = await getCurrentUser();
 
   if (!user) redirect("/login");
-  if (user.role !== "SALES" && user.role !== "SUPER_ADMIN") {
+  if (
+    user.role !== "SALES" &&
+    user.role !== "SALES_MANAGER" &&
+    user.role !== "SUPER_ADMIN"
+  ) {
     redirect("/");
   }
+
+  const isManager = user.role === "SALES_MANAGER" || user.role === "SUPER_ADMIN";
+
+  const salesNav = [
+    { label: "Dashboard", href: "/sales", icon: "\u{1F3E0}" },
+    { label: "New Ticket", href: "/sales/tickets/new", icon: "\u{2795}" },
+    { label: "My Cases", href: "/sales/my-cases", icon: "\u{1F4CB}" },
+    ...(isManager
+      ? [{ label: "Team Progress", href: "/sales/team", icon: "\u{1F4CA}" }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen">

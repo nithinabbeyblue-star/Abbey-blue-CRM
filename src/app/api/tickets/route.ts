@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { generateRefNumber } from "@/lib/ticket-utils";
-import { notifyKeyCoordinator } from "@/lib/mail";
+import { notifyManagers } from "@/lib/mail";
 import { Role, CaseType } from "@/generated/prisma/enums";
 import type { CaseTypeKey } from "@/constants/cases";
 
@@ -39,7 +39,7 @@ const createTicketSchema = z.object({
 
 // POST /api/tickets — Create a new ticket (Sales only)
 export async function POST(request: NextRequest) {
-  const { user, error } = await requireRole(Role.SALES, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   try {
@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Auto-create ChatRoom for this case
-    // Members: the sales person + all Key Coordinators + all Super Admins
+    // Members: the sales person + all Managers + all Super Admins
     const coordinatorsAndAdmins = await db.user.findMany({
       where: {
         status: "ACTIVE",
-        role: { in: [Role.KEY_COORDINATOR, Role.SUPER_ADMIN] },
+        role: { in: [Role.ADMIN_MANAGER, Role.SALES_MANAGER, Role.SUPER_ADMIN] },
       },
       select: { id: true },
     });
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Notify Key Coordinator via email
-    notifyKeyCoordinator({
+    notifyManagers({
       refNumber: ticket.refNumber,
       clientName: ticket.clientName,
       clientPhone: ticket.clientPhone,
@@ -143,8 +143,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { user, error } = await requireRole(
     Role.SALES,
+    Role.SALES_MANAGER,
     Role.ADMIN,
-    Role.KEY_COORDINATOR,
+    Role.ADMIN_MANAGER,
     Role.SUPER_ADMIN
   );
   if (error) return error;
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
   } else if (user.role === Role.ADMIN) {
     where.assignedToId = user.userId; // Admin sees only assigned tickets
   }
-  // KEY_COORDINATOR and SUPER_ADMIN see all tickets
+  // SALES_MANAGER, ADMIN_MANAGER and SUPER_ADMIN see all tickets
 
   if (status) {
     where.status = status;

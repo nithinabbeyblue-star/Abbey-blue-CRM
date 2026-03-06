@@ -66,10 +66,3 @@ export async function uploadToGoogleDrive(
 export async function deleteFromGoogleDrive(fileId: string): Promise<void> {
   await drive.files.delete({ fileId });
 }
-
-/**
- * Get a direct download URL for a Google Drive file.
- */
-export function getDownloadUrl(fileId: string): string {
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
-}

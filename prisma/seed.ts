@@ -9,61 +9,54 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...\n");
 
-  // Create Super Admin
-  const superAdminPassword = await bcrypt.hash("admin123", 12);
-  const superAdmin = await prisma.user.upsert({
-    where: { email: "admin@abbeylegal.com" },
-    update: {},
-    create: {
-      email: "admin@abbeylegal.com",
+  const accounts = [
+    {
+      email: "superadmin@abbey.com",
       name: "Super Admin",
-      passwordHash: superAdminPassword,
+      password: "SuperAdmin123!",
       role: Role.SUPER_ADMIN,
     },
-  });
-  console.log(`  Super Admin: ${superAdmin.email} (password: admin123)`);
-
-  // Create Key Coordinator
-  const kcPassword = await bcrypt.hash("coord123", 12);
-  const keyCoordinator = await prisma.user.upsert({
-    where: { email: "coordinator@abbeylegal.com" },
-    update: {},
-    create: {
-      email: "coordinator@abbeylegal.com",
-      name: "Key Coordinator",
-      passwordHash: kcPassword,
-      role: Role.KEY_COORDINATOR,
+    {
+      email: "adminmanager@abbey.com",
+      name: "Admin Manager",
+      password: "AdminManager123!",
+      role: Role.ADMIN_MANAGER,
     },
-  });
-  console.log(`  Key Coordinator: ${keyCoordinator.email} (password: coord123)`);
-
-  // Create sample Sales user
-  const salesPassword = await bcrypt.hash("sales123", 12);
-  const salesUser = await prisma.user.upsert({
-    where: { email: "sales@abbeylegal.com" },
-    update: {},
-    create: {
-      email: "sales@abbeylegal.com",
-      name: "Sarah Sales",
-      passwordHash: salesPassword,
-      role: Role.SALES,
+    {
+      email: "salesmanager@abbey.com",
+      name: "Sales Manager",
+      password: "SalesManager123!",
+      role: Role.SALES_MANAGER,
     },
-  });
-  console.log(`  Sales: ${salesUser.email} (password: sales123)`);
-
-  // Create sample Admin user
-  const adminPassword = await bcrypt.hash("ops123", 12);
-  const adminUser = await prisma.user.upsert({
-    where: { email: "ops@abbeylegal.com" },
-    update: {},
-    create: {
-      email: "ops@abbeylegal.com",
-      name: "Omar Operations",
-      passwordHash: adminPassword,
+    {
+      email: "admin@abbey.com",
+      name: "Admin User",
+      password: "Admin123!",
       role: Role.ADMIN,
     },
-  });
-  console.log(`  Admin: ${adminUser.email} (password: ops123)`);
+    {
+      email: "sales@abbey.com",
+      name: "Sales User",
+      password: "Sales123!",
+      role: Role.SALES,
+    },
+  ];
+
+  for (const acct of accounts) {
+    const hash = await bcrypt.hash(acct.password, 12);
+    const user = await prisma.user.upsert({
+      where: { email: acct.email },
+      update: { passwordHash: hash, role: acct.role, status: "ACTIVE" },
+      create: {
+        email: acct.email,
+        name: acct.name,
+        passwordHash: hash,
+        role: acct.role,
+        status: "ACTIVE",
+      },
+    });
+    console.log(`  ${acct.role}: ${user.email} (password: ${acct.password})`);
+  }
 
   console.log("\nSeeding complete!");
 }
