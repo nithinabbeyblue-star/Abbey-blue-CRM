@@ -47,9 +47,9 @@ export default function AdminTicketsPage() {
   return (
     <div>
       <div>
-        <h1 className="text-2xl font-bold text-foreground">All Tickets</h1>
+        <h1 className="text-2xl font-bold text-foreground">Team Cases</h1>
         <p className="mt-1 text-sm text-muted">
-          Manage your assigned cases
+          All cases across the admin department
         </p>
       </div>
 
@@ -74,11 +74,11 @@ export default function AdminTicketsPage() {
       <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
           <div className="py-16 text-center text-sm text-muted">
-            Loading tickets...
+            Loading cases...
           </div>
         ) : tickets.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted">
-            No tickets found.
+            No cases found.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -89,6 +89,7 @@ export default function AdminTicketsPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted">Case Type</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Priority</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Assigned To</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Created By</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Created</th>
               </tr>
@@ -122,6 +123,11 @@ export default function AdminTicketsPage() {
                     <span className={`text-xs font-medium ${PRIORITY_LABELS[ticket.priority]?.color || "text-muted"}`}>
                       {PRIORITY_LABELS[ticket.priority]?.label || "Normal"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {ticket.assignedTo?.name || (
+                      <span className="text-xs text-amber-600 font-medium">Unassigned</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted">{ticket.createdBy?.name}</td>
                   <td className="px-4 py-3 text-xs text-muted">

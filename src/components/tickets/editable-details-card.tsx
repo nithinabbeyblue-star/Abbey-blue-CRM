@@ -150,7 +150,7 @@ export function EditableDetailsCard({
 
   if (!editing) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
             Client & Case Details
@@ -204,7 +204,7 @@ export function EditableDetailsCard({
         {/* Address */}
         <div className="col-span-2 mt-2">
           <dt className="text-xs font-medium text-muted">Address</dt>
-          <dd className="mt-1 text-sm text-foreground">{address || "—"}</dd>
+          <dd className="mt-1 whitespace-pre-wrap break-all text-sm text-foreground">{address || "—"}</dd>
         </div>
 
         {/* Date Fields */}
@@ -237,7 +237,7 @@ export function EditableDetailsCard({
 
   // Edit mode
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-card p-6 shadow-sm">
+    <div className="min-w-0 overflow-hidden rounded-xl border-2 border-primary/30 bg-card p-6 shadow-sm">
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
         Edit Details
       </h2>
@@ -330,7 +330,7 @@ export function EditableDetailsCard({
             value={addr}
             onChange={(e) => setAddr(e.target.value)}
             placeholder="Full address including city and postcode"
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            className="w-full break-all rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
           />
         </div>
       </div>

@@ -15,6 +15,7 @@ interface Ticket {
   source: string;
   priority: number;
   createdAt: string;
+  createdBy: { id: string; name: string };
   assignedTo: { id: string; name: string } | null;
 }
 
@@ -24,7 +25,7 @@ const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   2: { label: "Urgent", color: "text-danger" },
 };
 
-export default function MyTicketsPage() {
+export default function SalesTeamCasesPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -47,9 +48,9 @@ export default function MyTicketsPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">My Tickets</h1>
+          <h1 className="text-2xl font-bold text-foreground">Team Cases</h1>
           <p className="mt-1 text-sm text-muted">
-            All leads you have created
+            All cases created by the sales team
           </p>
         </div>
         <Link
@@ -72,7 +73,7 @@ export default function MyTicketsPage() {
                 : "bg-white text-muted border border-border hover:bg-gray-50"
             }`}
           >
-            {s || "All"}
+            {s ? s.replace(/_/g, " ") : "All"}
           </button>
         ))}
       </div>
@@ -81,43 +82,24 @@ export default function MyTicketsPage() {
       <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
           <div className="py-16 text-center text-sm text-muted">
-            Loading tickets...
+            Loading cases...
           </div>
         ) : tickets.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-sm text-muted">No tickets found.</p>
-            <Link
-              href="/sales/tickets/new"
-              className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
-            >
-              Create your first ticket
-            </Link>
+            <p className="text-sm text-muted">No cases found.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Ref
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Client
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Case Type
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Priority
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Assigned To
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">
-                  Created
-                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Ref</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Client</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Case Type</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Priority</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Assigned To</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Created By</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Created</th>
               </tr>
             </thead>
             <tbody>
@@ -135,12 +117,8 @@ export default function MyTicketsPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-foreground">
-                      {ticket.clientName}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {ticket.clientPhone}
-                    </div>
+                    <div className="font-medium text-foreground">{ticket.clientName}</div>
+                    <div className="text-xs text-muted">{ticket.clientPhone}</div>
                   </td>
                   <td className="px-4 py-3">
                     <CaseBadge caseType={ticket.caseType} />
@@ -150,17 +128,16 @@ export default function MyTicketsPage() {
                     <StatusBadge status={ticket.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`text-xs font-medium ${
-                        PRIORITY_LABELS[ticket.priority]?.color || "text-muted"
-                      }`}
-                    >
+                    <span className={`text-xs font-medium ${PRIORITY_LABELS[ticket.priority]?.color || "text-muted"}`}>
                       {PRIORITY_LABELS[ticket.priority]?.label || "Normal"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {ticket.assignedTo?.name || "Unassigned"}
+                    {ticket.assignedTo?.name || (
+                      <span className="text-xs text-amber-600 font-medium">Unassigned</span>
+                    )}
                   </td>
+                  <td className="px-4 py-3 text-muted">{ticket.createdBy?.name}</td>
                   <td className="px-4 py-3 text-xs text-muted">
                     {new Date(ticket.createdAt).toLocaleDateString("en-GB", {
                       day: "2-digit",

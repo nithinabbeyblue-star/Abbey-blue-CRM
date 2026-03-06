@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { Role } from "@/generated/prisma/enums";
 
-// GET /api/my-cases — Get cases for current user with sorting
+// GET /api/my-cases — Get cases personally assigned to OR created by the current user
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
@@ -11,17 +10,16 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const sort = searchParams.get("sort") || "recent"; // "recent" | "alpha" | "status"
+  const sort = searchParams.get("sort") || "recent";
   const status = searchParams.get("status") || "";
 
-  // Build where clause based on role
-  let where: Record<string, unknown> = {};
-  if (user.role === Role.SALES) {
-    where = { createdById: user.userId };
-  } else if (user.role === Role.ADMIN) {
-    where = { assignedToId: user.userId };
-  }
-  // SALES_MANAGER, ADMIN_MANAGER and SA see all
+  // Always personal: cases where user is the assignee OR the creator
+  const where: Record<string, unknown> = {
+    OR: [
+      { assignedToId: user.userId },
+      { createdById: user.userId },
+    ],
+  };
 
   if (status) {
     where.status = status;
@@ -39,7 +37,7 @@ export async function GET(request: NextRequest) {
     case "oldest":
       orderBy = { createdAt: "asc" };
       break;
-    default: // "recent"
+    default:
       orderBy = { updatedAt: "desc" };
   }
 
@@ -53,7 +51,6 @@ export async function GET(request: NextRequest) {
       clientPhone: true,
       clientEmail: true,
       caseType: true,
-      destination: true,
       status: true,
       source: true,
       priority: true,
@@ -64,14 +61,15 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // Status counts for filter tabs
+  // Status counts scoped to personal cases
   const statusCounts = await db.ticket.groupBy({
     by: ["status"],
-    where: user.role === Role.SALES
-      ? { createdById: user.userId }
-      : user.role === Role.ADMIN
-      ? { assignedToId: user.userId }
-      : {},
+    where: {
+      OR: [
+        { assignedToId: user.userId },
+        { createdById: user.userId },
+      ],
+    },
     _count: true,
   });
 

@@ -55,9 +55,18 @@ function LoginForm() {
         return;
       }
 
-      // Success — redirect to callback URL or role dashboard
+      // Success — fetch role and redirect to the correct dashboard
+      const meRes = await fetch("/api/auth/me");
+      let dashboardPath = "/";
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const role = meData.user?.role;
+        if (role === "SUPER_ADMIN") dashboardPath = "/super-admin";
+        else if (role === "ADMIN_MANAGER" || role === "ADMIN") dashboardPath = "/admin";
+        else if (role === "SALES_MANAGER" || role === "SALES") dashboardPath = "/sales";
+      }
       const callbackUrl = searchParams.get("callbackUrl");
-      router.push(callbackUrl || "/");
+      router.push(callbackUrl || dashboardPath);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");

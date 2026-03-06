@@ -36,7 +36,7 @@ export async function PATCH(
       select: { id: true, role: true, name: true, status: true },
     });
 
-    if (!adminUser || adminUser.role !== Role.ADMIN || adminUser.status !== "ACTIVE") {
+    if (!adminUser || (adminUser.role !== Role.ADMIN && adminUser.role !== Role.ADMIN_MANAGER) || adminUser.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "Invalid admin user" },
         { status: 400 }

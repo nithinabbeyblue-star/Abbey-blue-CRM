@@ -25,7 +25,10 @@ export default async function SalesLayout({
     { label: "New Ticket", href: "/sales/tickets/new", icon: "\u{2795}" },
     { label: "My Cases", href: "/sales/my-cases", icon: "\u{1F4CB}" },
     ...(isManager
-      ? [{ label: "Team Progress", href: "/sales/team", icon: "\u{1F4CA}" }]
+      ? [
+          { label: "Team Cases", href: "/sales/tickets", icon: "\u{1F4C2}" },
+          { label: "Team Progress", href: "/sales/team", icon: "\u{1F4CA}" },
+        ]
       : []),
   ];
 

@@ -25,6 +25,7 @@ export default async function AdminLayout({
     { label: "My Cases", href: "/admin/my-cases", icon: "\u{1F4CB}" },
     ...(isManager
       ? [
+          { label: "Team Cases", href: "/admin/tickets", icon: "\u{1F4C2}" },
           { label: "Assignments", href: "/admin/assignments", icon: "\u{1F465}" },
           { label: "Team Progress", href: "/admin/team", icon: "\u{1F4CA}" },
         ]

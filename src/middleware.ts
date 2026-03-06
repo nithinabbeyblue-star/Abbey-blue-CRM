@@ -75,10 +75,9 @@ export default auth((request) => {
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
-  // Root path → redirect to role-based dashboard
+  // Root path → always go to login so users pick their account
   if (pathname === "/") {
-    const dashboardPath = getDashboardForRole(user.role);
-    return NextResponse.redirect(new URL(dashboardPath, request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // RBAC check — does this role have access to this path?

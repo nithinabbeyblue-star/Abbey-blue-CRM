@@ -156,15 +156,26 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
 
-  // Build where clause based on role (data scoping)
+  // Build where clause based on role (team-scoped view)
   const where: Record<string, unknown> = {};
 
   if (user.role === Role.SALES) {
-    where.createdById = user.userId; // Sales sees only their own tickets
+    // Regular Sales: only their own tickets
+    where.createdById = user.userId;
   } else if (user.role === Role.ADMIN) {
-    where.assignedToId = user.userId; // Admin sees only assigned tickets
+    // Regular Admin: only tickets assigned to them
+    where.assignedToId = user.userId;
+  } else if (user.role === Role.SALES_MANAGER) {
+    // Sales Manager: all tickets created by any SALES or SALES_MANAGER user
+    const salesUsers = await db.user.findMany({
+      where: { role: { in: [Role.SALES, Role.SALES_MANAGER] }, status: "ACTIVE" },
+      select: { id: true },
+    });
+    where.createdById = { in: salesUsers.map((u) => u.id) };
+  } else if (user.role === Role.ADMIN_MANAGER) {
+    // Admin Manager: all tickets (assigned or unassigned) — full admin department view
   }
-  // SALES_MANAGER, ADMIN_MANAGER and SUPER_ADMIN see all tickets
+  // SUPER_ADMIN sees everything — no filter
 
   if (status) {
     where.status = status;
