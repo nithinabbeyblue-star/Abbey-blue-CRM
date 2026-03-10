@@ -16,7 +16,9 @@ function isServiceAccountConfigured(): boolean {
   return !!(process.env.GOOGLE_CLIENT_EMAIL?.trim() && process.env.GOOGLE_PRIVATE_KEY?.trim());
 }
 
-function getAuth(): import("google-auth-library").JSONClient {
+type AuthClient = InstanceType<typeof google.auth.OAuth2> | InstanceType<typeof google.auth.GoogleAuth>;
+
+function getAuth(): AuthClient {
   if (isOAuthConfigured()) {
     const clientId = process.env.GOOGLE_CLIENT_ID!.trim();
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET!.trim();
@@ -33,7 +35,7 @@ function getAuth(): import("google-auth-library").JSONClient {
     return new google.auth.GoogleAuth({
       credentials: { client_email: clientEmail, private_key: privateKey },
       scopes: [DRIVE_SCOPE],
-    }) as unknown as import("google-auth-library").JSONClient;
+    }) as InstanceType<typeof google.auth.GoogleAuth>;
   }
   throw new Error("Set either (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN) for personal Drive, or (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY) for Shared Drive.");
 }
