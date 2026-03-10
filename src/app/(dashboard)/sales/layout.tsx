@@ -22,8 +22,9 @@ export default async function SalesLayout({
 
   const salesNav = [
     { label: "Dashboard", href: "/sales", icon: "\u{1F3E0}" },
-    { label: "New Ticket", href: "/sales/tickets/new", icon: "\u{2795}" },
+    { label: "New Case", href: "/sales/tickets/new", icon: "\u{2795}" },
     { label: "My Cases", href: "/sales/my-cases", icon: "\u{1F4CB}" },
+    { label: "Payment Follow-up", href: "/sales/payment-followup", icon: "\u{1F4B3}" },
     ...(isManager
       ? [
           { label: "Team Cases", href: "/sales/tickets", icon: "\u{1F4C2}" },

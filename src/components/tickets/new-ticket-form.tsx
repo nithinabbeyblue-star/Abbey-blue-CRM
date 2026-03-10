@@ -165,9 +165,9 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground">Create New Ticket</h1>
+      <h1 className="text-2xl font-bold text-foreground">Create New Case</h1>
       <p className="mt-1 text-sm text-muted">
-        Fill in all required fields to create a new client ticket.
+        Fill in all required fields to create a new client case.
       </p>
 
       {error && (

@@ -25,10 +25,8 @@ export async function GET(request: NextRequest) {
 
   if (status) {
     where.status = status;
-  } else {
-    // By default, exclude APPROVED/REJECTED from active view
-    where.status = { notIn: ["APPROVED", "REJECTED"] };
   }
+  // No default exclusion — show all statuses so users can filter by any case type
 
   if (caseType) {
     where.caseType = caseType;

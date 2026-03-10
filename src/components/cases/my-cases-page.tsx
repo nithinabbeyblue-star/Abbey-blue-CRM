@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { StatusBadge, STATUS_CONFIG } from "@/components/ui/status-badge";
+import { StatusBadge, STATUS_CONFIG, ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
 import { CASE_CONFIG } from "@/constants/cases";
 
 interface Ticket {
@@ -131,9 +131,9 @@ export function MyCasesPage({
           <option value="2">Urgent</option>
         </select>
 
-        {(caseTypeFilter || priorityFilter) && (
+        {(statusFilter || caseTypeFilter || priorityFilter) && (
           <button
-            onClick={() => { setCaseTypeFilter(""); setPriorityFilter(""); }}
+            onClick={() => { setStatusFilter(""); setCaseTypeFilter(""); setPriorityFilter(""); }}
             className="text-xs font-medium text-primary hover:underline"
           >
             Clear Filters
@@ -153,19 +153,22 @@ export function MyCasesPage({
         >
           All ({allCount})
         </button>
-        {statusCounts.map((sc) => (
-          <button
-            key={sc.status}
-            onClick={() => setStatusFilter(statusFilter === sc.status ? "" : sc.status)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              statusFilter === sc.status
-                ? "bg-primary text-white"
-                : `${STATUS_CONFIG[sc.status]?.bg ?? "bg-gray-100"} ${STATUS_CONFIG[sc.status]?.text ?? "text-gray-600"} hover:opacity-80`
-            }`}
-          >
-            {STATUS_CONFIG[sc.status]?.label ?? sc.status.replace(/_/g, " ")} ({sc.count})
-          </button>
-        ))}
+        {ORDERED_STATUSES.map((s) => {
+          const count = statusCounts.find((sc) => sc.status === s)?.count ?? 0;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === s
+                  ? "bg-primary text-white"
+                  : `${STATUS_CONFIG[s]?.bg ?? "bg-gray-100"} ${STATUS_CONFIG[s]?.text ?? "text-gray-600"} hover:opacity-80`
+              }`}
+            >
+              {getStatusLabel(s)} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Cases Table */}
