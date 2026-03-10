@@ -12,6 +12,12 @@ const PRIORITIES = [
   { value: 2, label: "Urgent" },
 ];
 
+const PAYMENT_TYPES = [
+  { value: "INITIAL_PAYMENT", label: "Initial Payment" },
+  { value: "FINAL_PAYMENT", label: "Final Payment" },
+  { value: "OTHER", label: "Other" },
+];
+
 type FieldErrors = Record<string, string>;
 
 export function NewTicketForm({ basePath }: { basePath: string }) {
@@ -23,6 +29,7 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
   const [govFee, setGovFee] = useState<number | null>(null);
   const [adsFee, setAdsFee] = useState<number | null>(null);
   const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [paymentType, setPaymentType] = useState("INITIAL_PAYMENT");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [attempted, setAttempted] = useState(false);
   const [duplicates, setDuplicates] = useState<Array<{
@@ -114,6 +121,7 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
       govFee,
       adsFee,
       paidAmount,
+      paymentType: paidAmount > 0 ? paymentType : undefined,
     };
     const caseEndDate = (formData.get("caseEndDate") as string)?.trim();
     if (caseEndDate) body.caseEndDate = caseEndDate;
@@ -366,94 +374,142 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
         </div>
 
         {/* Financials */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
-            Financials
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                ABL Fee <span className="text-danger">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={ablFee ?? ""}
-                onChange={(e) => setAblFee(e.target.value === "" ? null : parseFloat(e.target.value))}
-                placeholder="0.00"
-                className={finInputClass("ablFee")}
-              />
-              {attempted && fieldErrors.ablFee && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.ablFee}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Gov Fee <span className="text-danger">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={govFee ?? ""}
-                onChange={(e) => setGovFee(e.target.value === "" ? null : parseFloat(e.target.value))}
-                placeholder="0.00"
-                className={finInputClass("govFee")}
-              />
-              {attempted && fieldErrors.govFee && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.govFee}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                ADS Fee <span className="text-danger">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={adsFee ?? ""}
-                onChange={(e) => setAdsFee(e.target.value === "" ? null : parseFloat(e.target.value))}
-                placeholder="0.00"
-                className={finInputClass("adsFee")}
-              />
-              {attempted && fieldErrors.adsFee && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.adsFee}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Amount Paid
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={paidAmount}
-                onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+              Financial Information
+            </h2>
           </div>
-          {/* Live summary */}
-          <div className="mt-4 space-y-2 rounded-lg border border-border bg-gray-50 px-4 py-3 text-sm">
-            {ablFee != null && ablFee > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted">VAT in ABL (23%)</span>
-                <span className="font-medium text-foreground">{formatCurrency(calcVat(ablFee))}</span>
+          <div className="p-6">
+            {/* Fee Inputs */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  ABL Fee <span className="font-normal text-muted">(incl. 23% VAT)</span> <span className="text-danger">*</span>
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">&#8364;</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={ablFee ?? ""}
+                    onChange={(e) => setAblFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                    placeholder="0.00"
+                    className={`pl-7 ${finInputClass("ablFee")}`}
+                  />
+                </div>
+                {attempted && fieldErrors.ablFee && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.ablFee}</p>
+                )}
+                {ablFee != null && ablFee > 0 && (
+                  <p className="mt-1 text-[11px] text-muted">
+                    Net: {formatCurrency(ablFee - calcVat(ablFee))} &middot; VAT: {formatCurrency(calcVat(ablFee))}
+                  </p>
+                )}
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted">Total Amount</span>
-              <span className="font-bold text-foreground">{formatCurrency(total)}</span>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Gov Fee <span className="text-danger">*</span>
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">&#8364;</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={govFee ?? ""}
+                    onChange={(e) => setGovFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                    placeholder="0.00"
+                    className={`pl-7 ${finInputClass("govFee")}`}
+                  />
+                </div>
+                {attempted && fieldErrors.govFee && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.govFee}</p>
+                )}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  ADS Fee <span className="text-danger">*</span>
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">&#8364;</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={adsFee ?? ""}
+                    onChange={(e) => setAdsFee(e.target.value === "" ? null : parseFloat(e.target.value))}
+                    placeholder="0.00"
+                    className={`pl-7 ${finInputClass("adsFee")}`}
+                  />
+                </div>
+                {attempted && fieldErrors.adsFee && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.adsFee}</p>
+                )}
+              </div>
             </div>
-            <div className="flex justify-between border-t border-border pt-2">
-              <span className="font-medium text-muted">Amount Due</span>
-              <span className={`text-lg font-bold ${amountDue > 0 ? "text-red-600" : "text-green-600"}`}>
-                {formatCurrency(amountDue)}
-              </span>
+
+            {/* Initial Payment */}
+            <div className="mt-5 rounded-lg border border-dashed border-border bg-gray-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Initial Payment (Optional)</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Payment Type
+                  </label>
+                  <select
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    {PAYMENT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Amount Paid
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">&#8364;</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={paidAmount || ""}
+                      onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-border bg-white py-2.5 pl-7 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Summary */}
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border border-border bg-gray-50 p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted">VAT (23%)</p>
+                <p className="mt-1 text-base font-semibold text-foreground">
+                  {formatCurrency(ablFee != null && ablFee > 0 ? calcVat(ablFee) : 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-gray-50 p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted">Total</p>
+                <p className="mt-1 text-base font-bold text-foreground">{formatCurrency(total)}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-gray-50 p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted">Paid</p>
+                <p className="mt-1 text-base font-semibold text-green-600">{formatCurrency(paidAmount)}</p>
+              </div>
+              <div className={`rounded-lg border p-3 ${amountDue > 0 ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted">Due</p>
+                <p className={`mt-1 text-base font-bold ${amountDue > 0 ? "text-red-600" : "text-green-600"}`}>
+                  {formatCurrency(amountDue)}
+                </p>
+              </div>
             </div>
           </div>
         </div>

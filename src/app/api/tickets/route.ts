@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
 import { generateRefNumber } from "@/lib/ticket-utils";
 import { notifyManagers } from "@/lib/mail";
-import { Role, CaseType } from "@/generated/prisma/enums";
+import { Role, CaseType, PaymentType, PaymentStatus } from "@/generated/prisma/enums";
 import type { CaseTypeKey } from "@/constants/cases";
 
 const createTicketSchema = z.object({
@@ -32,6 +32,8 @@ const createTicketSchema = z.object({
   govFee: z.number().min(0).nullable().optional(),
   adsFee: z.number().min(0).nullable().optional(),
   adverts: z.number().min(0).nullable().optional(),
+  paidAmount: z.number().min(0).optional(),
+  paymentType: z.nativeEnum(PaymentType).optional(),
   caseDeadline: z.string().nullable().optional(),
   caseStartDate: z.string().min(1, "Case start date is required"),
   caseEndDate: z.string().nullable().optional(),
@@ -47,47 +49,10 @@ export async function POST(request: NextRequest) {
     const data = createTicketSchema.parse(body);
     const refNumber = await generateRefNumber((data.caseType as CaseTypeKey) ?? null);
 
-    const ticket = await db.ticket.create({
-      data: {
-        refNumber,
-        clientName: data.clientName,
-        clientEmail: data.clientEmail || null,
-        clientPhone: data.clientPhone,
-        gender: data.gender || null,
-        nationality: data.nationality || null,
-        address: data.address || null,
-        caseType: data.caseType || null,
-        destination: data.destination || null,
-        source: data.source,
-        priority: data.priority ?? 0,
-        notes: data.notes || null,
-        createdById: user.userId,
-        ablFee: data.ablFee ?? null,
-        govFee: data.govFee ?? null,
-        adsFee: data.adsFee ?? null,
-        adverts: data.adverts ?? null,
-        caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
-        caseStartDate: data.caseStartDate ? new Date(data.caseStartDate) : null,
-        caseEndDate: data.caseEndDate ? new Date(data.caseEndDate) : null,
-        ...(data.ablFee != null || data.govFee != null || data.adsFee != null || data.adverts != null
-          ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
-          : {}),
-      },
-    });
+    const initialPayment = (data.paidAmount ?? 0) > 0 ? data.paidAmount! : 0;
+    const paymentType = data.paymentType || PaymentType.INITIAL_PAYMENT;
 
-    // Create audit log entry
-    await db.auditLog.create({
-      data: {
-        ticketId: ticket.id,
-        userId: user.userId,
-        action: "TICKET_CREATED",
-        newValue: "LEAD",
-        metadata: JSON.stringify({ source: data.source, caseType: data.caseType }),
-      },
-    });
-
-    // Auto-create ChatRoom for this case
-    // Members: the sales person + all Managers + all Super Admins
+    // Atomic transaction: create ticket + initial payment + audit log + chat room
     const coordinatorsAndAdmins = await db.user.findMany({
       where: {
         status: "ACTIVE",
@@ -96,18 +61,83 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
-    const memberIds = new Set([
-      user.userId, // The sales person who created the ticket
+    const memberIds = Array.from(new Set([
+      user.userId,
       ...coordinatorsAndAdmins.map((u) => u.id),
-    ]);
+    ]));
 
-    await db.chatRoom.create({
-      data: {
-        ticketId: ticket.id,
-        members: {
-          create: Array.from(memberIds).map((userId) => ({ userId })),
+    const ticket = await db.$transaction(async (tx) => {
+      const t = await tx.ticket.create({
+        data: {
+          refNumber,
+          clientName: data.clientName,
+          clientEmail: data.clientEmail || null,
+          clientPhone: data.clientPhone,
+          gender: data.gender || null,
+          nationality: data.nationality || null,
+          address: data.address || null,
+          caseType: data.caseType || null,
+          destination: data.destination || null,
+          source: data.source,
+          priority: data.priority ?? 0,
+          notes: data.notes || null,
+          createdById: user.userId,
+          ablFee: data.ablFee ?? null,
+          govFee: data.govFee ?? null,
+          adsFee: data.adsFee ?? null,
+          adverts: data.adverts ?? null,
+          paidAmount: initialPayment,
+          caseDeadline: data.caseDeadline ? new Date(data.caseDeadline) : null,
+          caseStartDate: data.caseStartDate ? new Date(data.caseStartDate) : null,
+          caseEndDate: data.caseEndDate ? new Date(data.caseEndDate) : null,
+          ...(data.ablFee != null || data.govFee != null || data.adsFee != null || data.adverts != null
+            ? { financesUpdatedById: user.userId, financesUpdatedAt: new Date() }
+            : {}),
         },
-      },
+      });
+
+      // Create initial payment record if amount > 0
+      if (initialPayment > 0) {
+        await tx.payment.create({
+          data: {
+            ticketId: t.id,
+            recordedById: user.userId,
+            amount: initialPayment,
+            currency: "EUR",
+            type: paymentType,
+            status: PaymentStatus.PAID,
+            paidAt: new Date(),
+            notes: "Initial payment at ticket creation",
+          },
+        });
+      }
+
+      // Audit log
+      await tx.auditLog.create({
+        data: {
+          ticketId: t.id,
+          userId: user.userId,
+          action: "TICKET_CREATED",
+          newValue: "LEAD",
+          metadata: JSON.stringify({
+            source: data.source,
+            caseType: data.caseType,
+            ...(initialPayment > 0 ? { initialPayment, paymentType } : {}),
+          }),
+        },
+      });
+
+      // Chat room
+      await tx.chatRoom.create({
+        data: {
+          ticketId: t.id,
+          members: {
+            create: memberIds.map((userId) => ({ userId })),
+          },
+        },
+      });
+
+      return t;
     });
 
     // Notify Key Coordinator via email

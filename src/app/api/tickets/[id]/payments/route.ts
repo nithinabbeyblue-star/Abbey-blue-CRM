@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
-import { Role } from "@/generated/prisma/enums";
+import { PaymentStatus, PaymentType, Role } from "@/generated/prisma/enums";
 import { invalidateCache } from "@/lib/redis";
 import { triggerEvent } from "@/lib/pusher";
 
 const createPaymentSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
   currency: z.string().default("GBP"),
-  type: z.enum(["INITIAL_PAYMENT", "FINAL_PAYMENT", "OTHER", "CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE"]),
-  status: z.enum(["PENDING", "PAID", "REFUNDED"]).default("PAID"),
+  type: z.nativeEnum(PaymentType),
+  status: z.nativeEnum(PaymentStatus).default(PaymentStatus.PAID),
   notes: z.string().optional(),
   paidAt: z.string().optional(), // ISO date string
 });
@@ -18,8 +18,8 @@ const createPaymentSchema = z.object({
 const updatePaymentSchema = z.object({
   paymentId: z.string().min(1),
   amount: z.number().positive().optional(),
-  type: z.enum(["INITIAL_PAYMENT", "FINAL_PAYMENT", "OTHER", "CONSULTATION_FEE", "SERVICE_FEE", "GOVERNMENT_FEE"]).optional(),
-  status: z.enum(["PENDING", "PAID", "REFUNDED"]).optional(),
+  type: z.nativeEnum(PaymentType).optional(),
+  status: z.nativeEnum(PaymentStatus).optional(),
   notes: z.string().optional(),
   paidAt: z.string().nullable().optional(),
 });
@@ -33,7 +33,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -96,7 +96,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireRole(Role.SALES, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
+  const { error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -117,7 +117,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
@@ -197,7 +197,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, error } = await requireRole(Role.SALES, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
+  const { user, error } = await requireRole(Role.SALES, Role.SALES_MANAGER, Role.ADMIN, Role.ADMIN_MANAGER, Role.SUPER_ADMIN);
   if (error) return error;
 
   const { id } = await params;
