@@ -150,6 +150,7 @@ export default function SalesTeamCasesPage() {
             <p className="text-sm text-muted">No cases found.</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
@@ -210,6 +211,7 @@ export default function SalesTeamCasesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

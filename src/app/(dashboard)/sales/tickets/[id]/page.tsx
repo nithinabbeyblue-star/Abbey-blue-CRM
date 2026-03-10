@@ -98,7 +98,7 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="-m-8 flex h-screen flex-col overflow-hidden">
+    <div className="-m-4 -mt-16 flex h-[100dvh] flex-col overflow-hidden sm:-m-6 sm:-mt-16 lg:-m-8 lg:-mt-8">
       <CaseHeader
         refNumber={ticket.refNumber}
         clientName={ticket.clientName}
@@ -114,7 +114,7 @@ export default function TicketDetailPage() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_400px]">
         {/* Left — Scrollable content */}
-        <div className="min-w-0 space-y-4 overflow-y-auto px-8 py-6">
+        <div className="min-w-0 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
           <EditableDetailsCard
             ticketId={id}
             clientName={ticket.clientName}

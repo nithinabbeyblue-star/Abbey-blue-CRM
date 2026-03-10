@@ -150,6 +150,7 @@ export default function AdminTicketsPage() {
             No cases found.
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
@@ -210,6 +211,7 @@ export default function AdminTicketsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

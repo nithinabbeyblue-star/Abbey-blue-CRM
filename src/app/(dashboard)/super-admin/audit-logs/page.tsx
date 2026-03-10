@@ -140,6 +140,7 @@ export default function AuditLogsPage() {
         ) : logs.length === 0 ? (
           <div className="py-12 text-center text-sm text-muted">No audit logs found matching your filters.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
@@ -183,6 +184,7 @@ export default function AuditLogsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

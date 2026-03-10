@@ -160,7 +160,7 @@ export function ChatPanel({
     fileKey: string;
     fileSize: number;
     mimeType: string;
-  } | null> {
+  } | { error: string }> {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -169,7 +169,18 @@ export function ChatPanel({
         method: "POST",
         body: formData,
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.error(`Chat attachment upload failed (${res.status}):`, errText);
+        let errMessage = "File upload failed";
+        try {
+          const parsed = JSON.parse(errText) as { error?: string };
+          if (typeof parsed?.error === "string") errMessage = parsed.error;
+        } catch {
+          /* use default */
+        }
+        return { error: errMessage };
+      }
 
       const data = await res.json();
       return {
@@ -179,8 +190,9 @@ export function ChatPanel({
         fileSize: data.fileSize,
         mimeType: data.mimeType,
       };
-    } catch {
-      return null;
+    } catch (err) {
+      console.error("Chat attachment upload error:", err);
+      return { error: "File upload failed" };
     }
   }
 
@@ -206,12 +218,14 @@ export function ChatPanel({
       let attachments: { fileName: string; fileUrl: string; fileKey: string; fileSize: number; mimeType: string }[] = [];
       if (filesToUpload.length > 0) {
         const results = await Promise.all(filesToUpload.map((pf) => uploadFile(pf.file)));
-        attachments = results.filter((r): r is NonNullable<typeof r> => r !== null);
+        const firstError = results.find((r): r is { error: string } => r !== null && "error" in r && typeof (r as { error: string }).error === "string");
+        attachments = results.filter((r): r is { fileName: string; fileUrl: string; fileKey: string; fileSize: number; mimeType: string } => r !== null && !("error" in r));
         if (attachments.length === 0 && !content) {
-          setError("File upload failed");
+          setError(firstError?.error ?? "File upload failed");
           setSending(false);
           return;
         }
+        if (firstError) setError(firstError.error);
       }
 
       const res = await fetch(`/api/chat/${roomId}/messages`, {
@@ -271,7 +285,7 @@ export function ChatPanel({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-border bg-card shadow-sm">
         <p className="text-center text-xs text-muted">Loading chat...</p>
       </div>
     );
@@ -279,9 +293,15 @@ export function ChatPanel({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">Case Chat</h2>
-        <p className="text-center text-xs text-muted">{error}</p>
+      <div className="flex min-h-[400px] flex-col rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Case Chat</h2>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="text-center">
+            <p className="text-xs text-muted">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -290,7 +310,7 @@ export function ChatPanel({
   let lastDate = "";
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border bg-card shadow-sm">
+    <div className="flex min-h-[400px] h-full flex-col rounded-xl border border-border bg-card shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">

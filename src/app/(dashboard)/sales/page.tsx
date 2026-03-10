@@ -96,6 +96,7 @@ export default async function SalesDashboard() {
             </Link>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
@@ -160,6 +161,7 @@ export default async function SalesDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

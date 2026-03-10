@@ -198,7 +198,7 @@ export default function SuperAdminAssignmentsPage() {
             No assigned tickets yet.
           </div>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-gray-50/50">

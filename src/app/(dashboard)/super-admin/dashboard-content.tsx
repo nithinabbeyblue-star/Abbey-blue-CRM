@@ -158,6 +158,7 @@ export async function SuperAdminDashboardContent() {
           {activeCases.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted">No active cases.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-gray-50/50">
@@ -209,6 +210,7 @@ export async function SuperAdminDashboardContent() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

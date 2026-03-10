@@ -33,7 +33,7 @@ export default async function SuperAdminLayout({
         userRole={user.role}
         userId={user.userId}
       />
-      <main className="ml-64 min-h-screen bg-background p-8">
+      <main className="min-h-screen bg-background p-4 pt-16 sm:p-6 sm:pt-16 lg:ml-64 lg:p-8 lg:pt-8">
         {children}
       </main>
     </div>

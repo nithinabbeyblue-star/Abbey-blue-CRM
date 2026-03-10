@@ -39,6 +39,35 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs = 30000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function parseErrorResponse(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    if (!text) return `Server error (${res.status})`;
+    try {
+      const json = JSON.parse(text);
+      return json.error || json.message || `Server error (${res.status})`;
+    } catch {
+      return text.length > 200 ? `Server error (${res.status})` : text;
+    }
+  } catch {
+    return `Server error (${res.status})`;
+  }
+}
+
 export function DocumentSection({ ticketId, caseType }: { ticketId: string; caseType?: string | null }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,28 +110,53 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
       formData.append("file", file);
       formData.append("fileType", selectedType);
 
-      const res = await fetch(`/api/tickets/${ticketId}/documents`, {
-        method: "POST",
-        body: formData,
-      });
+      // First attempt with 30s timeout
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(
+          `/api/tickets/${ticketId}/documents`,
+          { method: "POST", body: formData },
+          30000
+        );
+      } catch (err) {
+        // If timed out or network error, retry once (handles Neon cold starts)
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setMessage({ text: "Server is waking up, retrying...", type: "info" });
+          const retryFormData = new FormData();
+          retryFormData.append("file", file);
+          retryFormData.append("fileType", selectedType);
+          res = await fetchWithTimeout(
+            `/api/tickets/${ticketId}/documents`,
+            { method: "POST", body: retryFormData },
+            45000
+          );
+        } else {
+          throw err;
+        }
+      }
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to upload document");
+        const errMsg = await parseErrorResponse(res);
+        throw new Error(errMsg);
       }
 
       setMessage({ text: "Document uploaded successfully", type: "success" });
       await fetchDocuments();
     } catch (err) {
-      setMessage({
-        text: err instanceof Error ? err.message : "Upload failed",
-        type: "error",
-      });
+      const errMsg =
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Upload timed out. Please try again."
+          : err instanceof TypeError && err.message === "Failed to fetch"
+            ? "Network error. Check your connection and try again."
+            : err instanceof Error
+              ? err.message
+              : "Upload failed";
+      setMessage({ text: errMsg, type: "error" });
+      console.error("Document upload failed:", err);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
-
-    setUploading(false);
-    // Reset file input
-    e.target.value = "";
   }
 
   async function handleDelete(docId: string) {
@@ -120,14 +174,14 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
         setMessage({ text: "Document deleted", type: "success" });
         await fetchDocuments();
       } else {
-        const data = await res.json();
-        setMessage({ text: data.error || "Failed to delete", type: "error" });
+        const errMsg = await parseErrorResponse(res);
+        setMessage({ text: errMsg, type: "error" });
       }
     } catch {
       setMessage({ text: "Failed to delete document", type: "error" });
+    } finally {
+      setDeleting(null);
     }
-
-    setDeleting(null);
   }
 
   return (
@@ -172,21 +226,28 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
         </div>
       </div>
 
-      {/* Message */}
-      {message.text && (
-        <div
-          className={`mt-3 rounded-lg border px-3 py-2 text-xs ${
-            message.type === "success"
-              ? "border-green-200 bg-green-50 text-green-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      {/* Message — fixed height container to prevent layout shift */}
+      <div className="mt-3 min-h-[32px]">
+        {message.text && (
+          <div
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              message.type === "success"
+                ? "border-green-200 bg-green-50 text-green-700"
+                : message.type === "info"
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {message.type === "error" && (
+              <span className="mr-1 font-semibold">Error:</span>
+            )}
+            {message.text}
+          </div>
+        )}
+      </div>
 
       {/* Document List */}
-      <div className="mt-4">
+      <div className="mt-1">
         {loading ? (
           <p className="py-4 text-center text-xs text-muted">Loading documents...</p>
         ) : documents.length === 0 ? (

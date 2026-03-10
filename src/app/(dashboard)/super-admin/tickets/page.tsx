@@ -160,6 +160,7 @@ export default function GlobalCaseInventoryPage() {
         ) : tickets.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted">No cases found.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-gray-50/50">
@@ -219,6 +220,7 @@ export default function GlobalCaseInventoryPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

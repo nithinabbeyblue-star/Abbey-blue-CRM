@@ -61,7 +61,7 @@ export function CaseHeader({
   const deadline = getUrgencyLevel(caseDeadline ?? null);
 
   return (
-    <div className="z-30 flex-shrink-0 border-b border-border bg-white/95 px-8 pb-3 pt-4 backdrop-blur-sm">
+    <div className="z-30 flex-shrink-0 border-b border-border bg-white/95 px-4 pb-3 pt-4 backdrop-blur-sm sm:px-6 lg:px-8">
       <div className="mb-2">
         <Link href={backHref} className="text-sm text-muted hover:text-primary">
           &larr; Back

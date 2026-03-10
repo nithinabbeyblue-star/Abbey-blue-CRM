@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { uploadToGoogleDrive } from "@/lib/google-drive";
+import { isDriveConfigured, uploadToGoogleDrive } from "@/lib/google-drive";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -14,6 +14,13 @@ export async function POST(
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!process.env.GOOGLE_DRIVE_FOLDER_ID?.trim() || !isDriveConfigured()) {
+    return NextResponse.json(
+      { error: "File storage is not configured. Attachment uploads are unavailable." },
+      { status: 503 }
+    );
   }
 
   const { roomId } = await params;
@@ -58,7 +65,19 @@ export async function POST(
       mimeType,
     });
   } catch (err) {
-    console.error("Chat attachment upload error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    const apiMessage =
+      err && typeof err === "object" && "response" in err && err.response && typeof (err as { response: { data?: unknown } }).response.data === "object"
+        ? JSON.stringify((err as { response: { data: unknown } }).response.data)
+        : null;
+    console.error("Chat attachment upload error:", message, apiMessage ?? "", err);
+    const isDev = process.env.NODE_ENV === "development";
+    const safeMessage =
+      isDev && (message || apiMessage)
+        ? [message, apiMessage].filter(Boolean).join(" — ")
+        : message.includes("GOOGLE_") || message.includes("credentials") || message.includes("ECONNREFUSED")
+          ? "File storage is not available. Please try again later or contact support."
+          : "File upload failed. Please try again.";
+    return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }
