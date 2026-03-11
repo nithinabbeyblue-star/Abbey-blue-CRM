@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layouts/sidebar";
+import { HRLayoutWrapper, HRMainContent } from "@/components/hr/hr-layout-wrapper";
 
 export default async function SalesLayout({
   children,
@@ -9,7 +10,7 @@ export default async function SalesLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?reason=session_invalid");
   if (
     user.role !== "SALES" &&
     user.role !== "SALES_MANAGER" &&
@@ -34,11 +35,13 @@ export default async function SalesLayout({
   ];
 
   return (
-    <div className="min-h-screen">
-      <Sidebar navItems={salesNav} userName={user.name} userRole={user.role} userId={user.userId} />
-      <main className="min-h-screen bg-background p-4 pt-16 sm:p-6 sm:pt-16 lg:ml-64 lg:p-8 lg:pt-8">
-        {children}
-      </main>
-    </div>
+    <HRLayoutWrapper>
+      <div className="min-h-screen">
+        <Sidebar navItems={salesNav} userName={user.name} userRole={user.role} userId={user.userId} />
+        <main className="min-h-screen bg-background p-4 pt-16 sm:p-6 sm:pt-16 lg:ml-64 lg:p-8 lg:pt-8">
+          <HRMainContent>{children}</HRMainContent>
+        </main>
+      </div>
+    </HRLayoutWrapper>
   );
 }

@@ -118,6 +118,38 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERSONAL
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum Division {
+  IMMIGRATION
+  FORMATIONS
+  MEDIA
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  FULL_DAY
+  CUSTOM
+}
+
 enum NotificationType {
   MENTION
   CASE_ASSIGNED
@@ -150,6 +182,7 @@ model User {
   gender        String?
   contactNumber String?
   homeAddress   String?
+  division      Division?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,6 +198,12 @@ model User {
   mentionedIn       Mention[]          @relation("MentionedIn")
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+
+  // HR relations
+  attendances       Attendance[]
+  shifts            Shift[]
+  leaveRequests     LeaveRequest[]     @relation("LeaveRequester")
+  reviewedLeaves    LeaveRequest[]     @relation("LeaveReviewer")
 
   @@map("users")
 }
@@ -389,4 +428,71 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ─── HR & Attendance ────────────────────────────────────
+
+model Attendance {
+  id         String    @id @default(cuid())
+  clockIn    DateTime
+  clockOut   DateTime?
+  breakStart DateTime?
+  breakEnd   DateTime?
+  totalHours Float?
+  breakHours Float?
+  autoClocked Boolean  @default(false)
+  flagged    Boolean   @default(false)
+  onBreak    Boolean   @default(false)
+  notes      String?
+  date       DateTime  @db.Date
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("attendances")
+}
+
+model Shift {
+  id        String    @id @default(cuid())
+  date      DateTime  @db.Date
+  type      ShiftType @default(FULL_DAY)
+  startTime String?
+  endTime   String?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("shifts")
+}
+
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  type       LeaveType   @default(ANNUAL)
+  status     LeaveStatus @default(PENDING)
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  reason     String?
+  medicalFileUrl  String?
+  medicalFileKey  String?
+  reviewNotes     String?
+  createdAt  DateTime    @default(now())
+  reviewedAt DateTime?
+
+  userId     String
+  user       User   @relation("LeaveRequester", fields: [userId], references: [id])
+  reviewedById String?
+  reviewedBy   User?  @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
 }

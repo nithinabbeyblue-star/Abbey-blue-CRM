@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layouts/sidebar";
+import { HRLayoutWrapper, HRMainContent } from "@/components/hr/hr-layout-wrapper";
 
 const superAdminNav = [
   { label: "Dashboard", href: "/super-admin", icon: "\u{1F4CA}" },
@@ -21,22 +22,24 @@ export default async function SuperAdminLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?reason=session_invalid");
   if (user.role !== "SUPER_ADMIN") {
     redirect("/");
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar
-        navItems={superAdminNav}
-        userName={user.name}
-        userRole={user.role}
-        userId={user.userId}
-      />
-      <main className="min-h-screen bg-background p-4 pt-16 sm:p-6 sm:pt-16 lg:ml-64 lg:p-8 lg:pt-8">
-        {children}
-      </main>
-    </div>
+    <HRLayoutWrapper>
+      <div className="min-h-screen">
+        <Sidebar
+          navItems={superAdminNav}
+          userName={user.name}
+          userRole={user.role}
+          userId={user.userId}
+        />
+        <main className="min-h-screen bg-background p-4 pt-16 sm:p-6 sm:pt-16 lg:ml-64 lg:p-8 lg:pt-8">
+          <HRMainContent>{children}</HRMainContent>
+        </main>
+      </div>
+    </HRLayoutWrapper>
   );
 }

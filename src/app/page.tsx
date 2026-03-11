@@ -6,7 +6,7 @@ export default async function Home() {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?reason=session_invalid");
   }
 
   redirect(getDashboardPath(user.role));

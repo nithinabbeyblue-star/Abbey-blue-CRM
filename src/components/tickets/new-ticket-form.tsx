@@ -98,7 +98,7 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) {
-      setError("Please fill in all required fields before creating a ticket.");
+      setError("Please fill in all required fields before creating a case.");
       setLoading(false);
       return;
     }
@@ -579,7 +579,7 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
             disabled={loading}
             className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Creating..." : "Create Ticket"}
+            {loading ? "Creating..." : "Create Case"}
           </button>
           <button
             type="button"

@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
 function LoginForm() {
   const router = useRouter();
@@ -14,9 +14,17 @@ function LoginForm() {
     const p = searchParams;
     if (p.get("approved") === "1") return "Your access has been approved! Please sign in.";
     if (p.get("passwordChanged") === "1") return "Password changed successfully. Please sign in with your new password.";
+    if (p.get("reason") === "session_invalid") return "Your session is no longer valid (e.g. account deactivated or session expired). Please sign in again.";
     return "";
   });
   const [loading, setLoading] = useState(false);
+
+  // Clear any stale session when user was kicked out (suspended / session invalid)
+  useEffect(() => {
+    if (searchParams.get("reason") === "session_invalid") {
+      signOut({ redirect: false });
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +59,16 @@ function LoginForm() {
           return;
         }
 
-        setError("Invalid email or password");
+        setError(
+          process.env.NODE_ENV === "development" && errMsg
+            ? `Login failed: ${errMsg}`
+            : "Invalid email or password. If you were approved recently, ask an admin to confirm your account is ACTIVE and you have set your password."
+        );
+        return;
+      }
+
+      if (!result?.ok) {
+        setError("Sign-in did not complete. Please try again.");
         return;
       }
 
@@ -97,7 +114,9 @@ function LoginForm() {
             <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
               searchParams.get("approved") || searchParams.get("passwordChanged")
                 ? "border-green-200 bg-green-50 text-green-700"
-                : "border-blue-200 bg-blue-50 text-blue-700"
+                : searchParams.get("reason") === "session_invalid"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                  : "border-blue-200 bg-blue-50 text-blue-700"
             }`}>
               {info}
             </div>
