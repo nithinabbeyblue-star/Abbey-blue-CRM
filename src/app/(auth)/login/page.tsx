@@ -19,6 +19,9 @@ function LoginForm() {
   });
   const [loading, setLoading] = useState(false);
 
+  // Errors from URL (e.g. after redirect from NextAuth or session_invalid)
+  const urlError = searchParams.get("error");
+
   // Clear any stale session when user was kicked out (suspended / session invalid)
   useEffect(() => {
     if (searchParams.get("reason") === "session_invalid") {
@@ -39,43 +42,47 @@ function LoginForm() {
         redirect: false,
       });
 
-      if (result?.error) {
-        const errMsg = result.error;
+      // NextAuth v5 beta can return inconsistent result; verify session by calling the API
+      await new Promise((r) => setTimeout(r, 150));
+      const meRes = await fetch("/api/auth/me", { credentials: "include" });
 
-        if (errMsg.includes("PENDING_ACTIVATION")) {
-          router.push(`/activate?email=${encodeURIComponent(email)}`);
-          return;
+      if (meRes.ok) {
+        const data = await meRes.json();
+        const role = data.user?.role;
+        let target = searchParams.get("callbackUrl") || "/";
+        if (target === "/" && role) {
+          if (role === "SUPER_ADMIN") target = "/super-admin";
+          else if (role === "ADMIN_MANAGER" || role === "ADMIN") target = "/admin";
+          else if (role === "SALES_MANAGER" || role === "SALES") target = "/sales";
         }
-        if (errMsg.includes("PENDING_APPROVAL")) {
-          router.push(`/waiting-room?email=${encodeURIComponent(email)}`);
-          return;
-        }
-        if (errMsg.includes("ACCOUNT_SUSPENDED")) {
-          setError("Your account has been deactivated. Contact your administrator.");
-          return;
-        }
-        if (errMsg.includes("LOGIN_UNAVAILABLE")) {
-          setError("Login is temporarily unavailable. Please try again later or contact support.");
-          return;
-        }
-
-        setError(
-          process.env.NODE_ENV === "development" && errMsg
-            ? `Login failed: ${errMsg}`
-            : "Invalid email or password. If you were approved recently, ask an admin to confirm your account is ACTIVE and you have set your password."
-        );
+        if (!target.startsWith("/")) target = "/";
+        window.location.href = target;
         return;
       }
 
-      if (!result?.ok) {
-        setError("Sign-in did not complete. Please try again.");
+      // Session not established — use signIn result error or URL error
+      const errMsg = (result as { error?: string } | null)?.error ?? urlError ?? "";
+      if (errMsg.includes("PENDING_ACTIVATION")) {
+        router.push(`/activate?email=${encodeURIComponent(email)}`);
         return;
       }
-
-      // Full page redirect so the session cookie is sent on the next request (fixes Vercel/production needing multiple sign-ins)
-      const callbackUrl = searchParams.get("callbackUrl");
-      const target = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/";
-      window.location.href = target;
+      if (errMsg.includes("PENDING_APPROVAL")) {
+        router.push(`/waiting-room?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      if (errMsg.includes("ACCOUNT_SUSPENDED")) {
+        setError("Your account has been deactivated. Contact your administrator.");
+        return;
+      }
+      if (errMsg.includes("LOGIN_UNAVAILABLE")) {
+        setError("Login is temporarily unavailable. Please try again later or contact support.");
+        return;
+      }
+      if (!errMsg && !meRes.ok) {
+        setError("Session could not be established. Please try again.");
+        return;
+      }
+      setError("Invalid email or password. If you were approved recently, ask an admin to confirm your account is ACTIVE and you have set your password.");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -95,9 +102,15 @@ function LoginForm() {
             <p className="mt-1 text-sm text-muted">Visa Processing System</p>
           </div>
 
-          {error && (
+          {(error || urlError) && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
+              {error ||
+                (urlError === "ACCOUNT_SUSPENDED" && "Your account has been deactivated. Contact your administrator.") ||
+                (urlError === "PENDING_ACTIVATION" && "Set your password first. Use the activation link from your email or go to the activation page.") ||
+                (urlError === "PENDING_APPROVAL" && "Your access is pending approval. You will be notified when an admin approves.") ||
+                (urlError === "LOGIN_UNAVAILABLE" && "Login is temporarily unavailable. Please try again later or contact support.") ||
+                (urlError === "CredentialsSignin" && "Invalid email or password. If you were approved recently, ask an admin to confirm your account is ACTIVE and you have set your password.") ||
+                "Sign-in failed. Please try again."}
             </div>
           )}
 

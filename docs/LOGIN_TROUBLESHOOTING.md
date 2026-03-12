@@ -1,4 +1,16 @@
-# Login troubleshooting (can't sign in when you should)
+# Login troubleshooting
+
+## Vercel / production: login not working or need to sign in multiple times
+
+1. **Set env in Vercel:** In the project → Settings → Environment Variables, add:
+   - **`NEXTAUTH_URL`** = your app URL, e.g. `https://your-app.vercel.app` (no trailing slash)
+   - **`AUTH_SECRET`** or **`NEXTAUTH_SECRET`** = a long random string (e.g. `openssl rand -base64 32`)
+2. **Redeploy** after changing env so the new values are used.
+3. Login uses a **server redirect** after sign-in so the session cookie is set before the next page loads; one sign-in should be enough.
+
+---
+
+## Can't sign in when you should (invalid credentials / status)
 
 If a user should have access but gets "Invalid email or password" or is sent to the waiting room:
 
