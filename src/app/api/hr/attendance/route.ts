@@ -42,18 +42,25 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get("date"); // YYYY-MM-DD
 
   // Determine whose records to fetch
-  let targetUserId = user.userId;
+  // Managers calling without a userId see ALL employees.
+  // Non-managers always see only their own.
+  const isManagerOrAbove = MANAGER_ROLES.includes(user.role as Role);
+  let targetUserId: string | null = null;
 
-  if (queryUserId && queryUserId !== user.userId) {
-    // Non-managers can only view their own records
-    if (!MANAGER_ROLES.includes(user.role)) {
+  if (queryUserId) {
+    // Explicit userId requested
+    if (queryUserId !== user.userId && !isManagerOrAbove) {
       return NextResponse.json(
         { error: "You can only view your own attendance records" },
         { status: 403 }
       );
     }
     targetUserId = queryUserId;
+  } else if (!isManagerOrAbove) {
+    // Non-managers default to own records
+    targetUserId = user.userId;
   }
+  // else: manager with no userId → targetUserId stays null → fetch all
 
   // Build date filter
   let dateFilter: { gte?: Date; lte?: Date } = {};
@@ -90,7 +97,10 @@ export async function GET(request: NextRequest) {
     dateFilter = { gte: start, lte: end };
   }
 
-  const where: Record<string, unknown> = { userId: targetUserId };
+  const where: Record<string, unknown> = {};
+  if (targetUserId) {
+    where.userId = targetUserId;
+  }
   if (dateFilter.gte || dateFilter.lte) {
     where.date = dateFilter;
   }
@@ -105,12 +115,12 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // Find active session: today's record with no clockOut
+  // Find active session for the current user (always their own)
   const today = startOfDayUTC(new Date());
   const activeSession = await db.attendance.findUnique({
     where: {
       userId_date: {
-        userId: targetUserId,
+        userId: user.userId,
         date: today,
       },
     },
