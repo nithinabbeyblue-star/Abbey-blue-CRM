@@ -120,12 +120,14 @@ export function MyHRPage({ userRole, userId }: MyHRPageProps) {
 
   useEffect(() => {
     setLoadingAtt(true);
-    fetch(`/api/hr/attendance?month=${month}`)
+    const params = new URLSearchParams({ month });
+    if (userId) params.set("userId", userId);
+    fetch(`/api/hr/attendance?${params}`)
       .then((r) => r.json())
       .then((data) => setAttendance(data.records || []))
       .catch(() => setAttendance([]))
       .finally(() => setLoadingAtt(false));
-  }, [month]);
+  }, [month, userId]);
 
   const fetchPersonalLeaves = useCallback(() => {
     setLoadingPersonal(true);

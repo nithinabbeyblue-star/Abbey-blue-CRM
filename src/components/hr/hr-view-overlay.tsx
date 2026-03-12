@@ -138,19 +138,29 @@ function TabButton({ active, onClick, icon, label }: {
 function AttendanceView() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  // Fetch current user ID once
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setCurrentUserId(d.user?.userId || null))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
     setLoading(true);
-    fetch(`/api/hr/attendance?month=${month}`)
+    fetch(`/api/hr/attendance?month=${month}&userId=${currentUserId}`)
       .then((r) => r.json())
       .then((data) => setRecords(data.records || []))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false));
-  }, [month]);
+  }, [month, currentUserId]);
 
   function changeMonth(delta: number) {
     const [y, m] = month.split("-").map(Number);

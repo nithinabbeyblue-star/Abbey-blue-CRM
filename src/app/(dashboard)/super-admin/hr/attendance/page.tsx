@@ -43,6 +43,14 @@ export default function AttendanceHistoryPage() {
 
   const monthLabel = new Date(Number(month.split("-")[0]), Number(month.split("-")[1]) - 1).toLocaleDateString("en-IE", { month: "long", year: "numeric" });
 
+  // Compute monthly totals per employee
+  const monthlyTotals: Record<string, number> = {};
+  for (const r of records) {
+    const name = r.user.name;
+    if (!monthlyTotals[name]) monthlyTotals[name] = 0;
+    monthlyTotals[name] += r.cappedHours ?? r.totalHours ?? 0;
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -63,15 +71,16 @@ export default function AttendanceHistoryPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted">Date</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Clock In</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Clock Out</th>
-                <th className="px-4 py-3 text-left font-medium text-muted">Hours</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Today&apos;s Hours</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Monthly Hours</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">Loading...</td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">No attendance records for this month</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">No attendance records for this month</td></tr>
               ) : (
                 records.map((r) => {
                   const isFlagged = r.flagged || r.autoCorrected;
@@ -94,6 +103,9 @@ export default function AttendanceHistoryPage() {
                             {r.rawHours.toFixed(1)}h
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold text-primary">{(monthlyTotals[r.user.name] ?? 0).toFixed(1)}h</span>
                       </td>
                       <td className="px-4 py-3">
                         {r.autoCorrected ? (
