@@ -9,6 +9,7 @@ import { ORDERED_STATUSES, getStatusLabel } from "@/components/ui/status-badge";
 import { CaseHeader } from "@/components/tickets/case-header";
 import { FinancialCard } from "@/components/tickets/financial-card";
 import { EditableDetailsCard } from "@/components/tickets/editable-details-card";
+import { CaseTasksSection } from "@/components/tickets/case-tasks";
 
 interface AuditLog {
   id: string;
@@ -211,6 +212,8 @@ export default function SuperAdminTicketDetailPage() {
               <p className="whitespace-pre-wrap text-sm">{ticket.notes}</p>
             </div>
           )}
+
+          <CaseTasksSection ticketId={id} />
 
           <FinancialCard
             ticketId={id}

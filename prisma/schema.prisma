@@ -205,6 +205,7 @@ model User {
   leaveRequests     LeaveRequest[]     @relation("LeaveRequester")
   reviewedLeaves    LeaveRequest[]     @relation("LeaveReviewer")
   roomBookings      RoomBooking[]
+  caseTasks         CaseTask[]
 
   @@map("users")
 }
@@ -251,6 +252,7 @@ model Ticket {
   payments     Payment[]
   auditLogs    AuditLog[]
   chatRoom     ChatRoom?
+  caseTasks    CaseTask[]
 
   @@index([status])
   @@index([createdById])
@@ -502,6 +504,24 @@ model LeaveRequest {
   @@index([status])
   @@index([startDate, endDate])
   @@map("leave_requests")
+}
+
+// ─── Case Tasks ────────────────────────────────────────
+
+model CaseTask {
+  id          String    @id @default(cuid())
+  content     String
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@map("case_tasks")
 }
 
 // ─── Meeting Room Booking ──────────────────────────────

@@ -7,6 +7,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { CaseHeader } from "@/components/tickets/case-header";
 import { FinancialCard } from "@/components/tickets/financial-card";
 import { EditableDetailsCard } from "@/components/tickets/editable-details-card";
+import { CaseTasksSection } from "@/components/tickets/case-tasks";
 
 interface AuditLog {
   id: string;
@@ -138,6 +139,8 @@ export default function TicketDetailPage() {
               <p className="whitespace-pre-wrap text-sm text-foreground">{ticket.notes}</p>
             </div>
           )}
+
+          <CaseTasksSection ticketId={ticket.id} />
 
           <FinancialCard
             ticketId={ticket.id}

@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Role, TicketStatus } from "@/generated/prisma/enums";
-import { STATUS_CONFIG } from "@/components/ui/status-badge";
+import { QuickStatusTable } from "@/components/tickets/quick-status-table";
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser();
@@ -14,18 +14,23 @@ export default async function AdminDashboard() {
   const where = isManager ? {} : { assignedToId: user.userId };
   const activeWhere = { ...where, status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] } };
 
-  const [total, unassigned, docCollection, submitted, recentTickets] =
+  const [total, unassigned, docCollection, submitted, inProgress, onHold, oldestCase, recentTickets] =
     await Promise.all([
       db.ticket.count({ where: activeWhere }),
       db.ticket.count({ where: { assignedToId: null, status: { notIn: [TicketStatus.APPROVED, TicketStatus.REJECTED] } } }),
-      db.ticket.count({
-        where: { ...where, status: "DOC_COLLECTION" },
-      }),
+      db.ticket.count({ where: { ...where, status: "DOC_COLLECTION" } }),
       db.ticket.count({ where: { ...where, status: "SUBMITTED" } }),
+      db.ticket.count({ where: { ...where, status: "IN_PROGRESS" } }),
+      db.ticket.count({ where: { ...where, status: "ON_HOLD" } }),
+      db.ticket.findFirst({
+        where: activeWhere,
+        orderBy: { createdAt: "asc" },
+        select: { refNumber: true, createdAt: true },
+      }),
       db.ticket.findMany({
         where: activeWhere,
         orderBy: { updatedAt: "desc" },
-        take: 5,
+        take: 10,
         include: {
           createdBy: { select: { name: true } },
           assignedTo: { select: { name: true } },
@@ -33,18 +38,40 @@ export default async function AdminDashboard() {
       }),
     ]);
 
+  const oldestDays = oldestCase
+    ? Math.floor((Date.now() - new Date(oldestCase.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
   const stats = isManager
     ? [
-        { label: "Active Cases", value: total, color: "bg-blue-500" },
-        { label: "Unassigned", value: unassigned, color: "bg-red-500" },
-        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
-        { label: "Submitted", value: submitted, color: "bg-purple-500" },
+        { label: "Active Cases", value: total, color: "bg-blue-500", sub: "" },
+        { label: "Unassigned", value: unassigned, color: "bg-red-500", sub: "" },
+        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500", sub: "" },
+        { label: "Submitted", value: submitted, color: "bg-purple-500", sub: "" },
+        { label: "In Progress", value: inProgress, color: "bg-blue-400", sub: "Currently being worked on" },
+        { label: "On Hold", value: onHold, color: "bg-orange-400", sub: "Awaiting action or response" },
+        { label: "Oldest Case", value: oldestCase ? `${oldestDays}d` : "—", color: "bg-red-400", sub: oldestCase ? oldestCase.refNumber : "No active cases" },
       ]
     : [
-        { label: "Active Cases", value: total, color: "bg-blue-500" },
-        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500" },
-        { label: "Submitted", value: submitted, color: "bg-purple-500" },
+        { label: "Active Cases", value: total, color: "bg-blue-500", sub: "" },
+        { label: "Doc Collection", value: docCollection, color: "bg-yellow-500", sub: "" },
+        { label: "Submitted", value: submitted, color: "bg-purple-500", sub: "" },
+        { label: "In Progress", value: inProgress, color: "bg-blue-400", sub: "Currently being worked on" },
+        { label: "On Hold", value: onHold, color: "bg-orange-400", sub: "Awaiting action or response" },
+        { label: "Oldest Case", value: oldestCase ? `${oldestDays}d` : "—", color: "bg-red-400", sub: oldestCase ? oldestCase.refNumber : "No active cases" },
       ];
+
+  // Serialize tickets for client component
+  const serializedTickets = recentTickets.map((t) => ({
+    id: t.id,
+    refNumber: t.refNumber,
+    clientName: t.clientName,
+    clientPhone: t.clientPhone,
+    status: t.status,
+    createdBy: { name: t.createdBy.name },
+    assignedTo: t.assignedTo ? { name: t.assignedTo.name } : null,
+    updatedAt: t.updatedAt.toISOString(),
+  }));
 
   return (
     <div>
@@ -70,7 +97,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
@@ -83,11 +110,14 @@ export default async function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold text-foreground">
               {stat.value}
             </p>
+            {stat.sub && (
+              <p className="mt-1 text-xs text-muted">{stat.sub}</p>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Recent Cases */}
+      {/* Recent Cases with Quick Status Update */}
       <div className="mt-8 rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
@@ -100,70 +130,11 @@ export default async function AdminDashboard() {
             View all
           </Link>
         </div>
-        {recentTickets.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted">
-            {isManager
-              ? "No tickets in the system yet."
-              : "No cases assigned to you yet."}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-gray-50/50">
-                <th className="px-6 py-3 text-left font-medium text-muted">Ref</th>
-                <th className="px-6 py-3 text-left font-medium text-muted">Client</th>
-                <th className="px-6 py-3 text-left font-medium text-muted">Status</th>
-                <th className="px-6 py-3 text-left font-medium text-muted">
-                  {isManager ? "Assigned To" : "Created By"}
-                </th>
-                <th className="px-6 py-3 text-left font-medium text-muted">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="border-b border-border last:border-0 hover:bg-gray-50/50"
-                >
-                  <td className="px-6 py-3">
-                    <Link
-                      href={`/admin/tickets/${ticket.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {ticket.refNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="font-medium text-foreground">{ticket.clientName}</div>
-                    <div className="text-xs text-muted">{ticket.clientPhone}</div>
-                  </td>
-                  <td className="px-6 py-3">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                        STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
-                      } ${STATUS_CONFIG[ticket.status]?.text ?? "text-gray-700"}`}
-                    >
-                      {STATUS_CONFIG[ticket.status]?.label ?? ticket.status.replace(/_/g, " ")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-muted">
-                    {isManager
-                      ? ticket.assignedTo?.name || "Unassigned"
-                      : ticket.createdBy?.name}
-                  </td>
-                  <td className="px-6 py-3 text-xs text-muted">
-                    {new Date(ticket.updatedAt).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        )}
+        <QuickStatusTable
+          tickets={serializedTickets}
+          isManager={isManager}
+          basePath="/admin"
+        />
       </div>
     </div>
   );
