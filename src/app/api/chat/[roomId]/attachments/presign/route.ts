@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { isDriveConfigured, uploadToGoogleDrive } from "@/lib/google-drive";
+import { uploadToS3, isS3Configured } from "@/lib/s3";
+import { uploadToGoogleDrive, isDriveConfigured } from "@/lib/google-drive";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // POST /api/chat/[roomId]/attachments/presign — Upload a chat attachment
-// (Route path kept for backward compatibility; now does direct upload instead of presigning)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
@@ -16,7 +16,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.GOOGLE_DRIVE_FOLDER_ID?.trim() || !isDriveConfigured()) {
+  if (!isS3Configured() && !isDriveConfigured()) {
     return NextResponse.json(
       { error: "File storage is not configured. Attachment uploads are unavailable." },
       { status: 503 }
@@ -55,29 +55,34 @@ export async function POST(
     const mimeType = file.type || "application/octet-stream";
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const { fileId, downloadUrl } = await uploadToGoogleDrive(file.name, mimeType, buffer);
+    let fileKey: string;
+    let fileUrl: string;
+
+    // Try S3 first, fall back to Google Drive
+    if (isS3Configured()) {
+      const result = await uploadToS3(file.name, mimeType, buffer, `chat/${roomId}`);
+      fileKey = result.fileKey;
+      fileUrl = result.fileUrl;
+    } else {
+      const result = await uploadToGoogleDrive(file.name, mimeType, buffer);
+      fileKey = result.fileId;
+      fileUrl = result.downloadUrl;
+    }
 
     return NextResponse.json({
       fileName: file.name,
-      fileUrl: downloadUrl,
-      fileKey: fileId,
+      fileUrl,
+      fileKey,
       fileSize: file.size,
       mimeType,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const apiMessage =
-      err && typeof err === "object" && "response" in err && err.response && typeof (err as { response: { data?: unknown } }).response.data === "object"
-        ? JSON.stringify((err as { response: { data: unknown } }).response.data)
-        : null;
-    console.error("Chat attachment upload error:", message, apiMessage ?? "", err);
-    const isDev = process.env.NODE_ENV === "development";
+    console.error("Chat attachment upload error:", message, err);
     const safeMessage =
-      isDev && (message || apiMessage)
-        ? [message, apiMessage].filter(Boolean).join(" — ")
-        : message.includes("GOOGLE_") || message.includes("credentials") || message.includes("ECONNREFUSED")
-          ? "File storage is not available. Please try again later or contact support."
-          : "File upload failed. Please try again.";
+      message.includes("AWS_S3") || message.includes("GOOGLE_") || message.includes("credentials") || message.includes("AccessDenied")
+        ? "File storage is not available. Please try again later or contact support."
+        : "File upload failed. Please try again.";
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }

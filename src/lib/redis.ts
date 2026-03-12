@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 
 let redis: Redis | null = null;
+let redisErrorLogged = false;
 
 export function getRedis(): Redis | null {
   if (!process.env.REDIS_URL) return null;
@@ -11,7 +12,10 @@ export function getRedis(): Redis | null {
       lazyConnect: true,
     });
     redis.on("error", (err) => {
-      console.error("Redis connection error:", err.message);
+      if (!redisErrorLogged) {
+        redisErrorLogged = true;
+        console.warn("Redis connection error (cache disabled):", err.message);
+      }
     });
   }
 

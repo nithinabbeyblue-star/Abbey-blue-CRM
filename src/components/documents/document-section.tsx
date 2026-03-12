@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 
 interface DocumentItem {
@@ -24,57 +24,30 @@ const DOC_TYPES = [
 ];
 
 const TYPE_ICONS: Record<string, string> = {
-  PASSPORT: "📘",
-  PHOTO: "📷",
-  BANK_STATEMENT: "🏦",
-  VISA_FORM: "📋",
-  SUPPORTING_DOC: "📎",
-  OTHER: "📄",
+  PASSPORT: "\u{1F4D8}",
+  PHOTO: "\u{1F4F7}",
+  BANK_STATEMENT: "\u{1F3E6}",
+  VISA_FORM: "\u{1F4CB}",
+  SUPPORTING_DOC: "\u{1F4CE}",
+  OTHER: "\u{1F4C4}",
 };
 
 function formatFileSize(bytes: number | null): string {
-  if (!bytes) return "—";
+  if (!bytes) return "\u2014";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-  timeoutMs = 30000
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function parseErrorResponse(res: Response): Promise<string> {
-  try {
-    const text = await res.text();
-    if (!text) return `Server error (${res.status})`;
-    try {
-      const json = JSON.parse(text);
-      return json.error || json.message || `Server error (${res.status})`;
-    } catch {
-      return text.length > 200 ? `Server error (${res.status})` : text;
-    }
-  } catch {
-    return `Server error (${res.status})`;
-  }
-}
-
-export function DocumentSection({ ticketId, caseType }: { ticketId: string; caseType?: string | null }) {
+export function DocumentSection({ ticketId }: { ticketId: string; caseType?: string | null }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [selectedType, setSelectedType] = useState("OTHER");
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -103,49 +76,109 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
     }
 
     setUploading(true);
+    setUploadProgress(0);
     setMessage({ text: "", type: "" });
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileType", selectedType);
+      // Try presigned S3 upload first for progress tracking
+      let usePresign = false;
+      setUploadProgress(5);
 
-      // First attempt with 30s timeout
-      let res: Response;
       try {
-        res = await fetchWithTimeout(
-          `/api/tickets/${ticketId}/documents`,
-          { method: "POST", body: formData },
-          30000
-        );
-      } catch (err) {
-        // If timed out or network error, retry once (handles Neon cold starts)
-        if (err instanceof DOMException && err.name === "AbortError") {
-          setMessage({ text: "Server is waking up, retrying...", type: "info" });
-          const retryFormData = new FormData();
-          retryFormData.append("file", file);
-          retryFormData.append("fileType", selectedType);
-          res = await fetchWithTimeout(
-            `/api/tickets/${ticketId}/documents`,
-            { method: "POST", body: retryFormData },
-            45000
-          );
-        } else {
-          throw err;
+        const presignRes = await fetch("/api/upload/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            folder: `tickets/${ticketId}`,
+          }),
+        });
+
+        if (presignRes.ok) {
+          const { uploadUrl, fileKey, fileUrl } = await presignRes.json();
+          usePresign = true;
+          setUploadProgress(10);
+
+          // Upload directly to S3 with progress tracking
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhrRef.current = xhr;
+
+            xhr.upload.addEventListener("progress", (ev) => {
+              if (ev.lengthComputable) {
+                const pct = Math.round(10 + (ev.loaded / ev.total) * 80);
+                setUploadProgress(pct);
+              }
+            });
+
+            xhr.addEventListener("load", () => {
+              if (xhr.status >= 200 && xhr.status < 300) resolve();
+              else reject(new Error(`S3 upload failed (${xhr.status})`));
+            });
+
+            xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+            xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
+
+            xhr.open("PUT", uploadUrl);
+            xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+            xhr.send(file);
+          });
+
+          xhrRef.current = null;
+          setUploadProgress(92);
+
+          // Save document record in our database
+          const saveRes = await fetch(`/api/tickets/${ticketId}/documents`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileKey,
+              fileUrl,
+              fileType: selectedType,
+              fileSize: file.size,
+              mimeType: file.type || "application/octet-stream",
+            }),
+          });
+
+          if (!saveRes.ok) {
+            const errData = await saveRes.json().catch(() => ({ error: "Failed to save" }));
+            throw new Error(errData.error || "Failed to save document record");
+          }
+        }
+      } catch (presignErr) {
+        // If presign failed and we haven't started S3 upload, fall through to FormData
+        if (usePresign) throw presignErr;
+      }
+
+      // Fallback: FormData upload (server uploads to Google Drive or S3)
+      if (!usePresign) {
+        setUploadProgress(20);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileType", selectedType);
+
+        const res = await fetch(`/api/tickets/${ticketId}/documents`, {
+          method: "POST",
+          body: formData,
+        });
+
+        setUploadProgress(90);
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: "Upload failed" }));
+          throw new Error(errData.error || "Failed to upload document");
         }
       }
 
-      if (!res.ok) {
-        const errMsg = await parseErrorResponse(res);
-        throw new Error(errMsg);
-      }
-
+      setUploadProgress(100);
       setMessage({ text: "Document uploaded successfully", type: "success" });
       await fetchDocuments();
     } catch (err) {
       const errMsg =
         err instanceof DOMException && err.name === "AbortError"
-          ? "Upload timed out. Please try again."
+          ? "Upload cancelled"
           : err instanceof TypeError && err.message === "Failed to fetch"
             ? "Network error. Check your connection and try again."
             : err instanceof Error
@@ -155,6 +188,8 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
       console.error("Document upload failed:", err);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      xhrRef.current = null;
       e.target.value = "";
     }
   }
@@ -174,7 +209,12 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
         setMessage({ text: "Document deleted", type: "success" });
         await fetchDocuments();
       } else {
-        const errMsg = await parseErrorResponse(res);
+        const text = await res.text();
+        let errMsg = `Server error (${res.status})`;
+        try {
+          const json = JSON.parse(text);
+          errMsg = json.error || errMsg;
+        } catch { /* ignore */ }
         setMessage({ text: errMsg, type: "error" });
       }
     } catch {
@@ -226,7 +266,31 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
         </div>
       </div>
 
-      {/* Message — fixed height container to prevent layout shift */}
+      {/* Upload Progress Bar */}
+      {uploading && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[11px] text-muted">
+            <span>
+              {uploadProgress < 10
+                ? "Preparing..."
+                : uploadProgress < 90
+                  ? "Uploading to storage..."
+                  : uploadProgress < 100
+                    ? "Saving record..."
+                    : "Complete!"}
+            </span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Message */}
       <div className="mt-3 min-h-[32px]">
         {message.text && (
           <div
@@ -262,7 +326,7 @@ export function DocumentSection({ ticketId, caseType }: { ticketId: string; case
                 className="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{TYPE_ICONS[doc.fileType] || "📄"}</span>
+                  <span className="text-lg">{TYPE_ICONS[doc.fileType] || "\u{1F4C4}"}</span>
                   <div>
                     <p className="text-sm font-medium text-foreground">{doc.fileName}</p>
                     <p className="text-xs text-muted">

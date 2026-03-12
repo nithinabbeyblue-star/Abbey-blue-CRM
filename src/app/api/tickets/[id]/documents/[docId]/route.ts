@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
-import { deleteFromGoogleDrive } from "@/lib/google-drive";
+import { deleteFromS3, isS3Configured } from "@/lib/s3";
+import { deleteFromGoogleDrive, isDriveConfigured } from "@/lib/google-drive";
 import { Role } from "@/generated/prisma/enums";
 
 // DELETE /api/tickets/[id]/documents/[docId] — Delete a document
@@ -23,11 +24,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    // Delete from Google Drive
+    // Delete from storage — S3 keys contain "/", Drive IDs don't
     if (document.fileKey) {
-      await deleteFromGoogleDrive(document.fileKey).catch((err) => {
-        console.error("Google Drive delete error (non-fatal):", err);
-      });
+      const isS3Key = document.fileKey.includes("/");
+      if (isS3Key && isS3Configured()) {
+        await deleteFromS3(document.fileKey).catch((err) => {
+          console.error("S3 delete error (non-fatal):", err);
+        });
+      } else if (!isS3Key && isDriveConfigured()) {
+        await deleteFromGoogleDrive(document.fileKey).catch((err) => {
+          console.error("Google Drive delete error (non-fatal):", err);
+        });
+      }
     }
 
     // Delete from DB

@@ -31,6 +31,7 @@ export default async function AdminLayout({
           { label: "Team Progress", href: "/admin/team", icon: "\u{1F4CA}" },
         ]
       : []),
+    { label: "Book Meeting", href: "/admin/booking", icon: "\u{1F4C5}" },
   ];
 
   return (

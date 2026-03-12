@@ -13,6 +13,7 @@ const superAdminNav = [
   { label: "Finance", href: "/super-admin/finance", icon: "\u{1F4B0}" },
   { label: "Payment Follow-up", href: "/super-admin/payment-followup", icon: "\u{1F4B3}" },
   { label: "Audit Logs", href: "/super-admin/audit-logs", icon: "\u{1F50D}" },
+  { label: "Book Meeting", href: "/super-admin/booking", icon: "\u{1F4C5}" },
 ];
 
 export default async function SuperAdminLayout({

@@ -204,6 +204,7 @@ model User {
   shifts            Shift[]
   leaveRequests     LeaveRequest[]     @relation("LeaveRequester")
   reviewedLeaves    LeaveRequest[]     @relation("LeaveReviewer")
+  roomBookings      RoomBooking[]
 
   @@map("users")
 }
@@ -501,4 +502,23 @@ model LeaveRequest {
   @@index([status])
   @@index([startDate, endDate])
   @@map("leave_requests")
+}
+
+// ─── Meeting Room Booking ──────────────────────────────
+
+model RoomBooking {
+  id        String   @id @default(cuid())
+  title     String
+  date      DateTime @db.Date
+  startTime String   // "HH:mm" format
+  endTime   String   // "HH:mm" format
+  notes     String?
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([date])
+  @@index([userId])
+  @@map("room_bookings")
 }
