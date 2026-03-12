@@ -289,6 +289,12 @@ model Payment {
   paidAt    DateTime?
   createdAt DateTime      @default(now())
 
+  // Stripe fields
+  stripeSessionId      String?   @unique
+  stripePaymentIntent  String?
+  stripePaymentLinkId  String?
+  stripePaymentLinkUrl String?
+
   ticketId     String
   ticket       Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   recordedById String

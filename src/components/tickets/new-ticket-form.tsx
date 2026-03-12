@@ -38,6 +38,16 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
   }>>([]);
   const [duplicateDismissed, setDuplicateDismissed] = useState(false);
 
+  // Stripe Payment Link
+  const [linkAmount, setLinkAmount] = useState("");
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<{
+    id: string;
+    url: string;
+    amount: number;
+  } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const total = calcTotal(ablFee, govFee, null, adsFee);
   const amountDue = calcDue(total, paidAmount);
 
@@ -88,6 +98,47 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
     }
   }
 
+  async function handleGenerateLink() {
+    const amount = parseFloat(linkAmount);
+    if (!amount || amount <= 0) return;
+    setLinkLoading(true);
+
+    try {
+      const res = await fetch("/api/stripe/payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          currency: "EUR",
+          description: caseType ? `${caseType.replace(/_/g, " ")} Case Payment` : "Case Payment",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to generate link");
+      }
+
+      const data = await res.json();
+      setGeneratedLink({
+        id: data.paymentLinkId,
+        url: data.paymentLinkUrl,
+        amount,
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to generate payment link");
+    }
+
+    setLinkLoading(false);
+  }
+
+  function handleCopyLink() {
+    if (!generatedLink) return;
+    navigator.clipboard.writeText(generatedLink.url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -121,7 +172,15 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
       govFee,
       adsFee,
       paidAmount,
-      paymentType: paidAmount > 0 ? paymentType : undefined,
+      paymentType: paidAmount > 0 || generatedLink ? paymentType : undefined,
+      // Stripe payment link data
+      ...(generatedLink
+        ? {
+            stripePaymentLinkId: generatedLink.id,
+            stripePaymentLinkUrl: generatedLink.url,
+            stripePaymentLinkAmount: generatedLink.amount,
+          }
+        : {}),
     };
     const caseEndDate = (formData.get("caseEndDate") as string)?.trim();
     if (caseEndDate) body.caseEndDate = caseEndDate;
@@ -486,6 +545,104 @@ export function NewTicketForm({ basePath }: { basePath: string }) {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Generate Payment Link */}
+            <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">
+              <p className="mb-1 text-xs font-semibold text-indigo-900">
+                Generate Stripe Payment Link
+              </p>
+              <p className="mb-3 text-[11px] text-indigo-700">
+                Create a shareable payment link to send to the client
+              </p>
+
+              {!generatedLink ? (
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-[11px] font-medium text-indigo-700">
+                      Amount
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-indigo-400">
+                        &#8364;
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={linkAmount}
+                        onChange={(e) => setLinkAmount(e.target.value)}
+                        placeholder={total > 0 ? total.toFixed(2) : "0.00"}
+                        className="w-full rounded-lg border border-indigo-200 bg-white py-2.5 pl-7 pr-4 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateLink}
+                    disabled={linkLoading || !linkAmount || parseFloat(linkAmount) <= 0}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    {linkLoading ? "Generating..." : "Generate Link"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <svg className="h-5 w-5 shrink-0 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-green-800">
+                        Payment link generated for {formatCurrency(generatedLink.amount)}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] text-green-700">
+                        {generatedLink.url}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-50"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                      {linkCopied ? "Copied!" : "Copy Link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.open(generatedLink.url, "_blank")}
+                      className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-50"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Open Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGeneratedLink(null);
+                        setLinkAmount("");
+                      }}
+                      className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition-colors hover:bg-gray-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-indigo-600">
+                    A pending payment record will be created when the case is submitted.
+                    It will be marked as paid once the client completes payment.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Live Summary */}

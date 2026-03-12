@@ -12,6 +12,7 @@ interface Payment {
   notes: string | null;
   paidAt: string | null;
   createdAt: string;
+  stripePaymentIntent: string | null;
   recordedBy: { name: string };
 }
 
@@ -248,6 +249,77 @@ export function FinancialCard({
     }
   }
 
+  // Stripe checkout
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeType, setStripeType] = useState("INITIAL_PAYMENT");
+  const [stripeAmount, setStripeAmount] = useState("");
+
+  async function handleStripeCheckout() {
+    const amount = stripeAmount ? parseFloat(stripeAmount) : due;
+    if (amount <= 0 || isNaN(amount)) return;
+    setStripeLoading(true);
+
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId,
+          amount,
+          currency: "EUR",
+          type: stripeType,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create checkout");
+      }
+
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Stripe checkout failed");
+    }
+
+    setStripeLoading(false);
+  }
+
+  // PDF generation (loaded dynamically to keep bundle small)
+  const [pdfLoading, setPdfLoading] = useState<string | null>(null);
+
+  async function handlePrintInvoice(paymentId: string) {
+    setPdfLoading(`invoice-${paymentId}`);
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/pdf`);
+      if (!res.ok) throw new Error("Failed to load payment data");
+      const { payment: pData } = await res.json();
+
+      const { generateInvoice } = await import("@/lib/generate-pdf");
+      generateInvoice(pData);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to generate invoice");
+    }
+    setPdfLoading(null);
+  }
+
+  async function handlePrintReceipt(paymentId: string) {
+    setPdfLoading(`receipt-${paymentId}`);
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/pdf`);
+      if (!res.ok) throw new Error("Failed to load payment data");
+      const { payment: pData } = await res.json();
+
+      const { generateReceipt } = await import("@/lib/generate-pdf");
+      generateReceipt(pData);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to generate receipt");
+    }
+    setPdfLoading(null);
+  }
+
   const statusColor = (status: string) => {
     const colors: Record<string, string> = {
       PAID: "bg-green-100 text-green-700",
@@ -382,6 +454,59 @@ export function FinancialCard({
             </p>
           </div>
         </div>
+
+        {/* Stripe Checkout */}
+        {canManagePayments && due > 0 && (
+          <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-indigo-900">Send Stripe Payment Link</p>
+                <p className="mt-0.5 text-[11px] text-indigo-700">
+                  Outstanding: {formatCurrency(due)} — enter a custom amount or leave blank to charge the full balance
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-indigo-700">Amount</label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-indigo-400">&#8364;</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={stripeAmount}
+                      onChange={(e) => setStripeAmount(e.target.value)}
+                      placeholder={due.toFixed(2)}
+                      className="w-28 rounded-lg border border-indigo-200 bg-white py-2 pl-7 pr-3 text-xs font-medium text-foreground outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-indigo-700">Type</label>
+                  <select
+                    value={stripeType}
+                    onChange={(e) => setStripeType(e.target.value)}
+                    className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                  >
+                    {PAYMENT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleStripeCheckout}
+                  disabled={stripeLoading}
+                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  {stripeLoading ? "Creating..." : "Pay with Stripe"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Last Updated */}
         {financesUpdatedBy && financesUpdatedAt && (
@@ -553,22 +678,44 @@ export function FinancialCard({
                           {p.notes && <span>&middot; {p.notes}</span>}
                         </div>
                       </div>
-                      {canManagePayments && (
-                        <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 gap-1">
+                        {/* Invoice & Receipt — always available */}
+                        <button
+                          onClick={() => handlePrintInvoice(p.id)}
+                          disabled={pdfLoading === `invoice-${p.id}`}
+                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
+                          title="Download Invoice PDF"
+                        >
+                          {pdfLoading === `invoice-${p.id}` ? "..." : "Invoice"}
+                        </button>
+                        {p.status === "PAID" && (
                           <button
-                            onClick={() => startEdit(p)}
-                            className="rounded-md px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            onClick={() => handlePrintReceipt(p.id)}
+                            disabled={pdfLoading === `receipt-${p.id}`}
+                            className="rounded-md px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 disabled:opacity-50"
+                            title="Download Receipt PDF"
                           >
-                            Edit
+                            {pdfLoading === `receipt-${p.id}` ? "..." : "Receipt"}
                           </button>
-                          <button
-                            onClick={() => handleDeletePayment(p.id)}
-                            className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                        )}
+                        {/* Edit/Delete — only for managers */}
+                        {canManagePayments && (
+                          <>
+                            <button
+                              onClick={() => startEdit(p)}
+                              className="rounded-md px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeletePayment(p.id)}
+                              className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

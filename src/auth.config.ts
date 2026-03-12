@@ -6,6 +6,7 @@ import type { NextAuthConfig } from "next-auth";
  * The full config in src/auth.ts extends this with the Credentials provider.
  */
 export const authConfig = {
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || process.env.SESSION_SECRET,
   providers: [], // Added in src/auth.ts (Credentials needs DB)
   callbacks: {
     jwt({ token, user }) {

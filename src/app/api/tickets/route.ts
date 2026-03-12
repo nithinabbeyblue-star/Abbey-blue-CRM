@@ -34,6 +34,10 @@ const createTicketSchema = z.object({
   adverts: z.number().min(0).nullable().optional(),
   paidAmount: z.number().min(0).optional(),
   paymentType: z.nativeEnum(PaymentType).optional(),
+  // Stripe payment link (generated before case creation)
+  stripePaymentLinkId: z.string().optional(),
+  stripePaymentLinkUrl: z.string().optional(),
+  stripePaymentLinkAmount: z.number().positive().optional(),
   caseDeadline: z.string().nullable().optional(),
   caseStartDate: z.string().min(1, "Case start date is required"),
   caseEndDate: z.string().nullable().optional(),
@@ -112,6 +116,23 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Create a PENDING payment record for Stripe payment link
+      if (data.stripePaymentLinkId && data.stripePaymentLinkAmount) {
+        await tx.payment.create({
+          data: {
+            ticketId: t.id,
+            recordedById: user.userId,
+            amount: data.stripePaymentLinkAmount,
+            currency: "EUR",
+            type: paymentType,
+            status: PaymentStatus.PENDING,
+            stripePaymentLinkId: data.stripePaymentLinkId,
+            stripePaymentLinkUrl: data.stripePaymentLinkUrl || null,
+            notes: "Stripe payment link generated at case creation",
+          },
+        });
+      }
+
       // Audit log
       await tx.auditLog.create({
         data: {
@@ -123,6 +144,7 @@ export async function POST(request: NextRequest) {
             source: data.source,
             caseType: data.caseType,
             ...(initialPayment > 0 ? { initialPayment, paymentType } : {}),
+            ...(data.stripePaymentLinkId ? { stripePaymentLinkId: data.stripePaymentLinkId } : {}),
           }),
         },
       });
