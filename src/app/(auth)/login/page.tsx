@@ -72,19 +72,10 @@ function LoginForm() {
         return;
       }
 
-      // Success — fetch role and redirect to the correct dashboard
-      const meRes = await fetch("/api/auth/me");
-      let dashboardPath = "/";
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        const role = meData.user?.role;
-        if (role === "SUPER_ADMIN") dashboardPath = "/super-admin";
-        else if (role === "ADMIN_MANAGER" || role === "ADMIN") dashboardPath = "/admin";
-        else if (role === "SALES_MANAGER" || role === "SALES") dashboardPath = "/sales";
-      }
+      // Full page redirect so the session cookie is sent on the next request (fixes Vercel/production needing multiple sign-ins)
       const callbackUrl = searchParams.get("callbackUrl");
-      router.push(callbackUrl || dashboardPath);
-      router.refresh();
+      const target = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/";
+      window.location.href = target;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

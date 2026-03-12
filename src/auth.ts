@@ -41,7 +41,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         try {
           const user = await db.user.findUnique({ where: { email } });
-          if (!user) return null;
+          if (!user) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[Auth] Login rejected: no user with this email.");
+            }
+            return null;
+          }
 
         // Extract request info for audit logging
         const headers = request?.headers ? new Headers(request.headers) : new Headers();
@@ -63,7 +68,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("PENDING_ACTIVATION");
         }
 
-        if (!user.passwordHash) return null;
+        if (!user.passwordHash) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[Auth] Login rejected: user has no password set. Set one via /activate or in DB.");
+          }
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
@@ -74,6 +84,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ipAddress: ip,
             userAgent: device,
           });
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[Auth] Login rejected: invalid password for this user.");
+          }
           return null;
         }
 

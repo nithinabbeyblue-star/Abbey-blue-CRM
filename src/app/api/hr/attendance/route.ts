@@ -19,6 +19,9 @@ const MANAGER_ROLES: Role[] = [
 ];
 
 const MAX_SESSION_HOURS = 14;
+const DEFAULT_SHIFT_MAX_HOURS = 8;  // Default: 09:00–17:00 = 8h
+const DEFAULT_SHIFT_END = "17:00";  // Default shift end time
+const GRACE_PERIOD_HOURS = 1;       // Wait 1h after shift end before auto-clocking out
 
 // Helper: get the start of the day in UTC for a given date
 function startOfDayUTC(date: Date): Date {
@@ -29,6 +32,29 @@ function startOfDayUTC(date: Date): Date {
 function calculateHours(clockIn: Date, clockOut: Date): number {
   const diffMs = clockOut.getTime() - clockIn.getTime();
   return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+}
+
+// Helper: calculate shift duration in hours from startTime/endTime strings ("HH:MM")
+function shiftDurationHours(startTime: string | null, endTime: string | null): number {
+  if (!startTime || !endTime) return DEFAULT_SHIFT_MAX_HOURS;
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const startMins = sh * 60 + sm;
+  const endMins = eh * 60 + em;
+  const diff = endMins - startMins;
+  return diff > 0 ? diff / 60 : DEFAULT_SHIFT_MAX_HOURS;
+}
+
+// Helper: build a Date for the shift end time on a given day
+function shiftEndDateTime(dayDate: Date, endTime: string | null): Date {
+  const time = endTime || DEFAULT_SHIFT_END;
+  const [h, m] = time.split(":").map(Number);
+  return new Date(Date.UTC(
+    dayDate.getUTCFullYear(),
+    dayDate.getUTCMonth(),
+    dayDate.getUTCDate(),
+    h, m, 0
+  ));
 }
 
 // GET /api/hr/attendance — Fetch attendance records
@@ -115,6 +141,131 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Look up shifts for all (userId, date) pairs in the result set
+  // so we can cap hours to the assigned shift duration.
+  const shiftKeys = records.map((r) => ({
+    userId: r.userId,
+    date: r.date,
+  }));
+
+  const shifts =
+    shiftKeys.length > 0
+      ? await db.shift.findMany({
+          where: {
+            OR: shiftKeys.map((k) => ({
+              userId: k.userId,
+              date: k.date,
+            })),
+          },
+          select: {
+            userId: true,
+            date: true,
+            startTime: true,
+            endTime: true,
+          },
+        })
+      : [];
+
+  // Build lookup maps: "userId|dateISO" → shift info
+  const shiftMap = new Map<string, { duration: number; endTime: string | null }>();
+  for (const s of shifts) {
+    const key = `${s.userId}|${s.date.toISOString()}`;
+    shiftMap.set(key, {
+      duration: shiftDurationHours(s.startTime, s.endTime),
+      endTime: s.endTime,
+    });
+  }
+
+  const now = new Date();
+
+  // ── Auto-clock-out stale sessions ──────────────────────────────────────
+  // If an employee forgot to clock out and it's been 1 hour past their
+  // shift end, automatically clock them out at shift end time and cap
+  // their hours to the shift duration. Written directly to the DB.
+  const staleIds = new Set<string>();
+
+  for (const r of records) {
+    if (r.clockOut) continue; // already clocked out
+
+    const key = `${r.userId}|${r.date.toISOString()}`;
+    const shift = shiftMap.get(key);
+    const maxHours = shift?.duration ?? DEFAULT_SHIFT_MAX_HOURS;
+    const endTime = shift?.endTime ?? null;
+
+    const shiftEnd = shiftEndDateTime(r.date, endTime);
+    const graceDeadline = new Date(shiftEnd.getTime() + GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+
+    // Past grace period → auto-clock out at shift end
+    if (now > graceDeadline) {
+      staleIds.add(r.id);
+      const rawElapsed = calculateHours(r.clockIn, now);
+      await db.attendance.update({
+        where: { id: r.id },
+        data: {
+          clockOut: shiftEnd,
+          totalHours: maxHours,
+          autoClocked: true,
+          flagged: true,
+          onBreak: false,
+          notes: r.notes
+            ? `${r.notes} | Auto-clocked out at shift end (${endTime || DEFAULT_SHIFT_END}). Actual elapsed: ${rawElapsed.toFixed(1)}h`
+            : `Auto-clocked out at shift end (${endTime || DEFAULT_SHIFT_END}). Actual elapsed: ${rawElapsed.toFixed(1)}h`,
+        },
+      });
+    }
+  }
+
+  // Re-fetch if any records were auto-clocked out so we return fresh data
+  const finalRecords = staleIds.size > 0
+    ? await db.attendance.findMany({
+        where,
+        orderBy: { date: "desc" },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+    : records;
+
+  // ── Enrich records with capped hours for display ───────────────────────
+  const enrichedRecords = finalRecords.map((r) => {
+    const key = `${r.userId}|${r.date.toISOString()}`;
+    const shift = shiftMap.get(key);
+    const maxHours = shift?.duration ?? DEFAULT_SHIFT_MAX_HOURS;
+    const rawHours = r.totalHours;
+
+    // Still active (within grace period) — show live elapsed
+    if (!r.clockOut) {
+      const elapsed = calculateHours(r.clockIn, now);
+      return {
+        ...r,
+        cappedHours: null,
+        rawHours: Math.round(elapsed * 100) / 100,
+        autoCorrected: false,
+        shiftMaxHours: maxHours,
+      };
+    }
+
+    // Completed: actual hours exceed shift max → show capped
+    if (rawHours !== null && rawHours > maxHours) {
+      return {
+        ...r,
+        cappedHours: maxHours,
+        rawHours,
+        autoCorrected: true,
+        shiftMaxHours: maxHours,
+      };
+    }
+
+    // Auto-clocked sessions (just written above, or from previous runs)
+    const wasAutoCorrected = staleIds.has(r.id) || (r.autoClocked && r.flagged);
+
+    return {
+      ...r,
+      cappedHours: rawHours,
+      rawHours,
+      autoCorrected: wasAutoCorrected,
+      shiftMaxHours: maxHours,
+    };
+  });
+
   // Find active session for the current user (always their own)
   const today = startOfDayUTC(new Date());
   const activeSession = await db.attendance.findUnique({
@@ -127,7 +278,7 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({
-    records,
+    records: enrichedRecords,
     activeSession: activeSession && !activeSession.clockOut ? activeSession : null,
   });
 }
@@ -178,29 +329,38 @@ export async function POST(request: NextRequest) {
   // --- Active session exists (clockOut is null) ---
   const sessionDurationHours = calculateHours(existingSession.clockIn, now);
 
-  // Auto-clock-out scenario: session exceeds 14 hours
+  // Look up the assigned shift for this user+date to determine the cap
+  const assignedShift = await db.shift.findUnique({
+    where: {
+      userId_date: {
+        userId: user.userId,
+        date: today,
+      },
+    },
+    select: { startTime: true, endTime: true },
+  });
+
+  const shiftMax = assignedShift
+    ? shiftDurationHours(assignedShift.startTime, assignedShift.endTime)
+    : DEFAULT_SHIFT_MAX_HOURS;
+
+  // Hard ceiling: session exceeds 14 hours (absolute safety net)
   if (sessionDurationHours > MAX_SESSION_HOURS) {
-    // Auto-close the stale session at clockIn + 14 hours, flag it
-    const autoClockOut = new Date(
-      existingSession.clockIn.getTime() + MAX_SESSION_HOURS * 60 * 60 * 1000
-    );
+    const shiftEnd = shiftEndDateTime(today, assignedShift?.endTime ?? null);
 
     await db.attendance.update({
       where: { id: existingSession.id },
       data: {
-        clockOut: autoClockOut,
-        totalHours: MAX_SESSION_HOURS,
+        clockOut: shiftEnd,
+        totalHours: shiftMax,
         autoClocked: true,
         flagged: true,
         notes: existingSession.notes
-          ? `${existingSession.notes} | Auto-clocked out after ${MAX_SESSION_HOURS}h`
-          : `Auto-clocked out after ${MAX_SESSION_HOURS}h`,
+          ? `${existingSession.notes} | Auto-clocked out at shift end. Actual: ${sessionDurationHours.toFixed(1)}h`
+          : `Auto-clocked out at shift end. Actual: ${sessionDurationHours.toFixed(1)}h`,
       },
     });
 
-    // Start a new session for today — but the unique constraint
-    // (userId, date) prevents a second record on the same date.
-    // So we return the auto-clocked record and inform the user.
     const updatedRecord = await db.attendance.findUnique({
       where: { id: existingSession.id },
     });
@@ -209,23 +369,46 @@ export async function POST(request: NextRequest) {
       {
         record: updatedRecord,
         action: "auto_clock_out",
-        message: `Previous session exceeded ${MAX_SESSION_HOURS} hours and was auto-clocked out and flagged. Please clock in again tomorrow.`,
+        autoCorrected: true,
+        message: `Session exceeded ${MAX_SESSION_HOURS}h. Auto-clocked out at shift end (${assignedShift?.endTime || DEFAULT_SHIFT_END}) with ${shiftMax}h recorded.`,
       },
       { status: 200 }
     );
   }
 
-  // Normal clock out
+  const exceededShift = sessionDurationHours > shiftMax;
+  const finalHours = exceededShift ? shiftMax : sessionDurationHours;
+
+  // Normal clock out — cap to shift duration if exceeded
   const record = await db.attendance.update({
     where: { id: existingSession.id },
     data: {
       clockOut: now,
-      totalHours: sessionDurationHours,
-      ...(notes ? { notes: existingSession.notes ? `${existingSession.notes} | ${notes}` : notes } : {}),
+      totalHours: finalHours,
+      flagged: exceededShift ? true : existingSession.flagged,
+      autoClocked: exceededShift ? true : existingSession.autoClocked,
+      ...(exceededShift
+        ? {
+            notes: existingSession.notes
+              ? `${existingSession.notes} | Auto-capped from ${sessionDurationHours.toFixed(1)}h to ${shiftMax}h (shift limit)`
+              : `Auto-capped from ${sessionDurationHours.toFixed(1)}h to ${shiftMax}h (shift limit)`,
+          }
+        : notes
+          ? { notes: existingSession.notes ? `${existingSession.notes} | ${notes}` : notes }
+          : {}),
     },
   });
 
-  return NextResponse.json({ record, action: "clock_out" });
+  return NextResponse.json({
+    record,
+    action: "clock_out",
+    ...(exceededShift
+      ? {
+          autoCorrected: true,
+          message: `Hours exceeded shift limit (${shiftMax}h). Capped from ${sessionDurationHours.toFixed(1)}h to ${shiftMax}h.`,
+        }
+      : {}),
+  });
 }
 
 // PATCH /api/hr/attendance — Start Break / End Break

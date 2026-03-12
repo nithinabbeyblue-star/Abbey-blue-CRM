@@ -10,6 +10,10 @@ interface AttendanceRecord {
   clockIn: string;
   clockOut: string | null;
   totalHours: number | null;
+  cappedHours: number | null;
+  rawHours: number | null;
+  autoCorrected: boolean;
+  shiftMaxHours: number;
   flagged: boolean;
   autoClocked: boolean;
   user: { name: string };
@@ -320,11 +324,15 @@ export default function HRDashboardPage() {
                   <th className="px-4 py-3 text-left font-medium text-muted">
                     Hours Worked
                   </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {attendance.map((rec) => {
-                  const isFlagged = rec.flagged || rec.autoClocked;
+                  const isFlagged = rec.flagged || rec.autoClocked || rec.autoCorrected;
+                  const displayHours = rec.cappedHours ?? rec.totalHours;
 
                   return (
                     <tr
@@ -345,7 +353,39 @@ export default function HRDashboardPage() {
                         {formatTime(rec.clockOut)}
                       </td>
                       <td className="px-4 py-3 text-muted">
-                        {formatHours(rec.totalHours)}
+                        <span>{formatHours(displayHours)}</span>
+                        {rec.autoCorrected && rec.rawHours != null && (
+                          <span className="ml-1.5 text-[11px] text-gray-400 line-through">
+                            {rec.rawHours.toFixed(1)}h
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {rec.autoCorrected ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                            title={`Capped to ${rec.shiftMaxHours}h shift limit (actual: ${rec.rawHours?.toFixed(1)}h)`}
+                          >
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Auto-Corrected
+                          </span>
+                        ) : rec.autoClocked ? (
+                          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                            Auto-Clocked
+                          </span>
+                        ) : rec.flagged ? (
+                          <span className="inline-flex rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[11px] font-medium text-yellow-700">
+                            Flagged
+                          </span>
+                        ) : !rec.clockOut ? (
+                          <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted">OK</span>
+                        )}
                       </td>
                     </tr>
                   );

@@ -7,6 +7,10 @@ interface AttendanceRecord {
   clockIn: string;
   clockOut: string | null;
   totalHours: number | null;
+  cappedHours: number | null;
+  rawHours: number | null;
+  autoCorrected: boolean;
+  shiftMaxHours: number;
   autoClocked: boolean;
   flagged: boolean;
   notes: string | null;
@@ -60,27 +64,67 @@ export default function AttendanceHistoryPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted">Clock In</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Clock Out</th>
                 <th className="px-4 py-3 text-left font-medium text-muted">Hours</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted">Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Loading...</td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted">No attendance records for this month</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">No attendance records for this month</td></tr>
               ) : (
-                records.map((r) => (
-                  <tr key={r.id} className={`border-b border-border last:border-0 ${r.flagged ? "bg-yellow-50" : ""}`}>
-                    <td className="px-4 py-3 font-medium">{r.user.name}</td>
-                    <td className="px-4 py-3">{new Date(r.date).toLocaleDateString("en-IE")}</td>
-                    <td className="px-4 py-3">{new Date(r.clockIn).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}</td>
-                    <td className="px-4 py-3">
-                      {r.clockOut
-                        ? new Date(r.clockOut).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })
-                        : <span className="text-green-600 font-medium">Active</span>}
-                    </td>
-                    <td className="px-4 py-3">{r.totalHours != null ? `${r.totalHours.toFixed(1)}h` : "—"}</td>
-                  </tr>
-                ))
+                records.map((r) => {
+                  const isFlagged = r.flagged || r.autoCorrected;
+                  const displayHours = r.cappedHours ?? r.totalHours;
+
+                  return (
+                    <tr key={r.id} className={`border-b border-border last:border-0 ${isFlagged ? "bg-yellow-50" : ""}`}>
+                      <td className="px-4 py-3 font-medium">{r.user.name}</td>
+                      <td className="px-4 py-3">{new Date(r.date).toLocaleDateString("en-IE")}</td>
+                      <td className="px-4 py-3">{new Date(r.clockIn).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}</td>
+                      <td className="px-4 py-3">
+                        {r.clockOut
+                          ? new Date(r.clockOut).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })
+                          : <span className="text-green-600 font-medium">Active</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span>{displayHours != null ? `${displayHours.toFixed(1)}h` : "—"}</span>
+                        {r.autoCorrected && r.rawHours != null && (
+                          <span className="ml-1.5 text-[11px] text-gray-400 line-through">
+                            {r.rawHours.toFixed(1)}h
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.autoCorrected ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                            title={`Capped to ${r.shiftMaxHours}h shift limit (actual: ${r.rawHours?.toFixed(1)}h)`}
+                          >
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Auto-Corrected
+                          </span>
+                        ) : r.autoClocked ? (
+                          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                            Auto-Clocked
+                          </span>
+                        ) : r.flagged ? (
+                          <span className="inline-flex rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[11px] font-medium text-yellow-700">
+                            Flagged
+                          </span>
+                        ) : !r.clockOut ? (
+                          <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted">OK</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
