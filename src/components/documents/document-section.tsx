@@ -97,7 +97,6 @@ export function DocumentSection({ ticketId }: { ticketId: string; caseType?: str
 
         if (presignRes.ok) {
           const { uploadUrl, fileKey, fileUrl } = await presignRes.json();
-          usePresign = true;
           setUploadProgress(10);
 
           // Upload directly to S3 with progress tracking
@@ -125,6 +124,8 @@ export function DocumentSection({ ticketId }: { ticketId: string; caseType?: str
             xhr.send(file);
           });
 
+          // Mark presign as successful only after S3 upload completes
+          usePresign = true;
           xhrRef.current = null;
           setUploadProgress(92);
 
@@ -148,8 +149,9 @@ export function DocumentSection({ ticketId }: { ticketId: string; caseType?: str
           }
         }
       } catch (presignErr) {
-        // If presign failed and we haven't started S3 upload, fall through to FormData
+        // If S3 direct upload failed (e.g. CORS), fall through to FormData server upload
         if (usePresign) throw presignErr;
+        console.warn("Presigned upload failed, falling back to server upload:", presignErr);
       }
 
       // Fallback: FormData upload (server uploads to Google Drive or S3)
