@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 
 // Paths that don't require authentication
-const publicPaths = ["/login", "/activate", "/waiting-room", "/change-password", "/api/auth"];
+const publicPaths = ["/login", "/activate", "/waiting-room", "/change-password", "/api/auth", "/api/debug-env"];
 
 function isPublicPath(path: string): boolean {
   return publicPaths.some((p) => path.startsWith(p));
