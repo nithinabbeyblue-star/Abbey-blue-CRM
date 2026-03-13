@@ -32,6 +32,7 @@ export default async function SalesLayout({
           { label: "Team Progress", href: "/sales/team", icon: "\u{1F4CA}" },
         ]
       : []),
+    { label: "Case Board", href: "/sales/case-board", icon: "\u{2705}" },
     { label: "Book Meeting", href: "/sales/booking", icon: "\u{1F4C5}" },
   ];
 

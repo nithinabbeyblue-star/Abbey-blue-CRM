@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { StatusBadge, ORDERED_STATUSES } from "@/components/ui/status-badge";
+import { StatusBadge, ORDERED_STATUSES, STATUS_CONFIG } from "@/components/ui/status-badge";
 import { CaseBadge } from "@/components/ui/case-badge";
 import { CASE_CONFIG } from "@/constants/cases";
 
@@ -138,19 +138,26 @@ export default function GlobalCaseInventoryPage() {
 
       {/* Status Filters */}
       <div className="mt-4 flex flex-wrap gap-2">
-        {statuses.map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === s
-                ? "bg-primary text-white"
-                : "bg-white text-muted border border-border hover:bg-gray-50"
-            }`}
-          >
-            {s ? s.replace(/_/g, " ") : "All"}
-          </button>
-        ))}
+        {statuses.map((s) => {
+          const cfg = s ? STATUS_CONFIG[s] : null;
+          return (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                filter === s
+                  ? cfg
+                    ? `${cfg.bg} ${cfg.text} ring-2 ring-offset-1 ring-current`
+                    : "bg-primary text-white"
+                  : cfg
+                    ? `${cfg.bg} ${cfg.text} opacity-70 hover:opacity-100`
+                    : "bg-white text-muted border border-border hover:bg-gray-50"
+              }`}
+            >
+              {s ? (cfg?.label || s.replace(/_/g, " ")) : "All"}
+            </button>
+          );
+        })}
       </div>
 
       {/* Cases Table */}

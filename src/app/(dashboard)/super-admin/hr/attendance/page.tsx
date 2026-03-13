@@ -131,7 +131,9 @@ export default function AttendanceHistoryPage() {
                             Active
                           </span>
                         ) : (
-                          <span className="text-[11px] text-muted">OK</span>
+                          <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                            Inactive
+                          </span>
                         )}
                       </td>
                     </tr>
