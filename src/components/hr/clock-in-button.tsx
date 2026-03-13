@@ -32,7 +32,8 @@ interface ActiveSession {
 const MANAGER_ROLES = ["SUPER_ADMIN", "SALES_MANAGER", "ADMIN_MANAGER"];
 
 function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
+  const safe = Math.max(0, ms);
+  const totalSeconds = Math.floor(safe / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;

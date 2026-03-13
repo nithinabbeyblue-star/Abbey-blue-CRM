@@ -97,11 +97,11 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl border border-border bg-card p-6 shadow-sm"
+            className="flex flex-col justify-between rounded-xl border border-border bg-card p-6 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-muted">{stat.label}</p>
@@ -110,9 +110,7 @@ export default async function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold text-foreground">
               {stat.value}
             </p>
-            {stat.sub && (
-              <p className="mt-1 text-xs text-muted">{stat.sub}</p>
-            )}
+            <p className="mt-1 text-xs text-muted">{stat.sub || "\u00A0"}</p>
           </div>
         ))}
       </div>
