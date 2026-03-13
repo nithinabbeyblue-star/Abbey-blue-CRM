@@ -157,6 +157,7 @@ enum NotificationType {
   STATUS_CHANGE
   NEW_MESSAGE
   ACCESS_REQUEST
+  DEADLINE_ALERT
 }
 
 // ─── Models ──────────────────────────────────────────────
@@ -236,6 +237,7 @@ model Ticket {
   caseStartDate    DateTime?
   caseEndDate      DateTime?
   adsFinishingDate DateTime?
+  visaExpiryDate   DateTime?
 
   financesUpdatedById String?
   financesUpdatedBy   User?    @relation("FinancesUpdatedBy", fields: [financesUpdatedById], references: [id])

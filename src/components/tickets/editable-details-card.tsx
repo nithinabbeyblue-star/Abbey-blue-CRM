@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CaseDropdown } from "@/components/ui/case-dropdown";
 import { CaseBadge } from "@/components/ui/case-badge";
 import { AdsBadge } from "@/components/ui/ads-badge";
+import { ExpiryBadge } from "@/components/ui/expiry-badge";
 import type { CaseTypeKey } from "@/constants/cases";
 
 interface EditableDetailsCardProps {
@@ -20,6 +21,7 @@ interface EditableDetailsCardProps {
   caseEndDate?: string | null;
   adsFinishingDate?: string | null;
   caseDeadline?: string | null;
+  visaExpiryDate?: string | null;
   onSaved: () => void;
 }
 
@@ -56,6 +58,7 @@ export function EditableDetailsCard({
   caseEndDate,
   adsFinishingDate,
   caseDeadline,
+  visaExpiryDate,
   onSaved,
 }: EditableDetailsCardProps) {
   const [editing, setEditing] = useState(false);
@@ -75,6 +78,7 @@ export function EditableDetailsCard({
   const [endDate, setEndDate] = useState(caseEndDate ? caseEndDate.slice(0, 10) : "");
   const [adsDate, setAdsDate] = useState(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
   const [deadline, setDeadline] = useState(caseDeadline ? caseDeadline.slice(0, 10) : "");
+  const [visaExpiry, setVisaExpiry] = useState(visaExpiryDate ? visaExpiryDate.slice(0, 10) : "");
 
   function handleCancel() {
     setName(clientName);
@@ -89,6 +93,7 @@ export function EditableDetailsCard({
     setEndDate(caseEndDate ? caseEndDate.slice(0, 10) : "");
     setAdsDate(adsFinishingDate ? adsFinishingDate.slice(0, 10) : "");
     setDeadline(caseDeadline ? caseDeadline.slice(0, 10) : "");
+    setVisaExpiry(visaExpiryDate ? visaExpiryDate.slice(0, 10) : "");
     setEditing(false);
     setMessage({ text: "", type: "" });
   }
@@ -120,6 +125,8 @@ export function EditableDetailsCard({
         body.adsFinishingDate = adsDate || null;
       if (deadline !== (caseDeadline ? caseDeadline.slice(0, 10) : ""))
         body.caseDeadline = deadline || null;
+      if (visaExpiry !== (visaExpiryDate ? visaExpiryDate.slice(0, 10) : ""))
+        body.visaExpiryDate = visaExpiry || null;
 
       if (Object.keys(body).length === 0) {
         setEditing(false);
@@ -228,6 +235,13 @@ export function EditableDetailsCard({
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Case Deadline</span>
               <span className="text-sm text-foreground">{formatDate(caseDeadline)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">Visa/IRP Expiry Date</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-foreground">{formatDate(visaExpiryDate)}</span>
+                {visaExpiryDate && <ExpiryBadge expiryDate={visaExpiryDate} label="Visa Expiry" size="sm" />}
+              </div>
             </div>
           </div>
         </div>
@@ -379,6 +393,22 @@ export function EditableDetailsCard({
               onChange={(e) => setDeadline(e.target.value)}
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
             />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Visa / IRP Expiry Date
+            </label>
+            <input
+              type="date"
+              value={visaExpiry}
+              onChange={(e) => setVisaExpiry(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            {visaExpiry && (
+              <div className="mt-1">
+                <ExpiryBadge expiryDate={visaExpiry} label="Visa Expiry" size="sm" />
+              </div>
+            )}
           </div>
         </div>
       </div>

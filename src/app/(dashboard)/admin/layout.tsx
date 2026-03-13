@@ -32,6 +32,7 @@ export default async function AdminLayout({
         ]
       : []),
     { label: "Case Board", href: "/admin/case-board", icon: "\u{2705}" },
+    { label: "Deadlines", href: "/admin/deadlines", icon: "\u{23F0}" },
     { label: "Book Meeting", href: "/admin/booking", icon: "\u{1F4C5}" },
   ];
 

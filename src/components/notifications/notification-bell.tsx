@@ -178,6 +178,7 @@ export function NotificationBell({
     DOCUMENT_UPLOAD: "bg-orange-100 text-orange-600",
     NEW_MESSAGE: "bg-indigo-100 text-indigo-600",
     ACCESS_REQUEST: "bg-amber-100 text-amber-600",
+    DEADLINE_ALERT: "bg-red-100 text-red-600",
   };
 
   return (
@@ -252,6 +253,7 @@ export function NotificationBell({
                       {notif.type === "DOCUMENT_UPLOAD" && "D"}
                       {notif.type === "NEW_MESSAGE" && "M"}
                       {notif.type === "ACCESS_REQUEST" && "R"}
+                      {notif.type === "DEADLINE_ALERT" && "!"}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{notif.title}</p>

@@ -46,6 +46,7 @@ const updateTicketSchema = z.object({
   caseStartDate: z.string().nullable().optional(),
   caseEndDate: z.string().nullable().optional(),
   adsFinishingDate: z.string().nullable().optional(),
+  visaExpiryDate: z.string().nullable().optional(),
 });
 
 // GET /api/tickets/[id] — Get a single ticket
@@ -237,6 +238,15 @@ export async function PATCH(
         action: "ADS_FINISHING_DATE_UPDATED",
         oldValue: ticket.adsFinishingDate?.toISOString() ?? null,
         newValue: data.adsFinishingDate ?? null,
+      });
+    }
+
+    if (data.visaExpiryDate !== undefined) {
+      updateData.visaExpiryDate = data.visaExpiryDate ? new Date(data.visaExpiryDate) : null;
+      auditEntries.push({
+        action: "VISA_EXPIRY_DATE_UPDATED",
+        oldValue: ticket.visaExpiryDate?.toISOString() ?? null,
+        newValue: data.visaExpiryDate ?? null,
       });
     }
 

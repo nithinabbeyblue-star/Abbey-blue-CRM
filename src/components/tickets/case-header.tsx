@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CaseBadge } from "@/components/ui/case-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AdsBadge } from "@/components/ui/ads-badge";
+import { ExpiryBadge } from "@/components/ui/expiry-badge";
 
 interface CaseHeaderProps {
   refNumber: string;
@@ -14,7 +15,9 @@ interface CaseHeaderProps {
   caseWorker: { name: string } | null;
   createdAt?: string | null;
   caseDeadline?: string | null;
+  caseEndDate?: string | null;
   adsFinishingDate?: string | null;
+  visaExpiryDate?: string | null;
   backHref: string;
 }
 
@@ -55,7 +58,9 @@ export function CaseHeader({
   caseWorker,
   createdAt,
   caseDeadline,
+  caseEndDate,
   adsFinishingDate,
+  visaExpiryDate,
   backHref,
 }: CaseHeaderProps) {
   const deadline = getUrgencyLevel(caseDeadline ?? null);
@@ -71,7 +76,12 @@ export function CaseHeader({
       <div className="flex items-start justify-between gap-4">
         {/* Left — Case identity */}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold text-foreground">{clientName}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="truncate text-xl font-bold text-foreground">{clientName}</h1>
+            {visaExpiryDate && (
+              <ExpiryBadge expiryDate={visaExpiryDate} label="Visa/IRP Expiry" size="sm" />
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-primary">{refNumber}</span>
             <CaseBadge caseType={caseType} />
@@ -90,7 +100,7 @@ export function CaseHeader({
           </div>
         </div>
 
-        {/* Right — Deadline alert + ADS badge */}
+        {/* Right — Deadline + ADS badge */}
         <div className="hidden flex-shrink-0 items-center gap-2 lg:flex">
           {adsFinishingDate && <AdsBadge adsFinishingDate={adsFinishingDate} />}
           {deadline && (

@@ -43,6 +43,7 @@ interface Ticket {
   caseStartDate: string | null;
   caseEndDate: string | null;
   adsFinishingDate: string | null;
+  visaExpiryDate: string | null;
   financesUpdatedBy: { name: string } | null;
   financesUpdatedAt: string | null;
   createdBy: { id: string; name: string; email: string };
@@ -110,6 +111,7 @@ export default function TicketDetailPage() {
         createdAt={ticket.createdAt}
         caseDeadline={ticket.caseDeadline}
         adsFinishingDate={ticket.adsFinishingDate}
+        visaExpiryDate={ticket.visaExpiryDate}
         backHref="/sales/tickets"
       />
 
@@ -130,6 +132,7 @@ export default function TicketDetailPage() {
             caseEndDate={ticket.caseEndDate}
             adsFinishingDate={ticket.adsFinishingDate}
             caseDeadline={ticket.caseDeadline}
+            visaExpiryDate={ticket.visaExpiryDate}
             onSaved={fetchTicket}
           />
 
