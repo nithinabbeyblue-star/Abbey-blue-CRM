@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { formatCurrency } from "@/constants/finance";
 import PusherClient from "pusher-js";
 import {
@@ -28,7 +29,7 @@ interface RecentPayment {
   status: string;
   paidAt: string | null;
   createdAt: string;
-  ticket: { refNumber: string; clientName: string };
+  ticket: { id: string; refNumber: string; clientName: string };
   recordedBy: { name: string };
 }
 
@@ -302,12 +303,14 @@ export default function FinancePage() {
               {data.recentPayments.map((payment) => (
                 <div key={payment.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {payment.ticket.clientName}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {payment.ticket.refNumber} &bull; {payment.type.replace(/_/g, " ")} &bull; By {payment.recordedBy.name}
-                    </p>
+                    <Link href={`/super-admin/tickets/${payment.ticket.id}`} className="block hover:opacity-80">
+                      <p className="text-sm font-medium text-foreground">
+                        {payment.ticket.clientName}
+                      </p>
+                      <p className="text-xs text-muted">
+                        <span className="text-primary hover:underline">{payment.ticket.refNumber}</span> &bull; {payment.type.replace(/_/g, " ")} &bull; By {payment.recordedBy.name}
+                      </p>
+                    </Link>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-foreground">

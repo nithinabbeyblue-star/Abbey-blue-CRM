@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { STATUS_CONFIG } from "@/components/ui/status-badge";
 import { CaseBadge } from "@/components/ui/case-badge";
 
@@ -154,7 +155,7 @@ export default function AssignmentsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-primary">{ticket.refNumber}</span>
+                      <Link href={`/admin/tickets/${ticket.id}`} className="text-sm font-bold text-primary hover:underline">{ticket.refNumber}</Link>
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                           STATUS_CONFIG[ticket.status]?.bg ?? "bg-gray-100"
@@ -228,7 +229,9 @@ export default function AssignmentsPage() {
               <tbody>
                 {assigned.map((ticket) => (
                   <tr key={ticket.id} className="border-b border-border last:border-0 hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-medium text-primary">{ticket.refNumber}</td>
+                    <td className="px-4 py-3">
+                      <Link href={`/admin/tickets/${ticket.id}`} className="font-medium text-primary hover:underline">{ticket.refNumber}</Link>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-foreground">{ticket.clientName}</div>
                     </td>

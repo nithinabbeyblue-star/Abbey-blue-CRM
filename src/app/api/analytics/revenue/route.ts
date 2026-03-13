@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
-          ticket: { select: { refNumber: true, clientName: true } },
+          ticket: { select: { id: true, refNumber: true, clientName: true } },
           recordedBy: { select: { name: true } },
         },
       }),
