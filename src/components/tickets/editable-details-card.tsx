@@ -5,6 +5,7 @@ import { CaseDropdown } from "@/components/ui/case-dropdown";
 import { CaseBadge } from "@/components/ui/case-badge";
 import { AdsBadge } from "@/components/ui/ads-badge";
 import { ExpiryBadge } from "@/components/ui/expiry-badge";
+import { formatDateShort } from "@/lib/date-utils";
 import type { CaseTypeKey } from "@/constants/cases";
 
 interface EditableDetailsCardProps {
@@ -25,14 +26,6 @@ interface EditableDetailsCardProps {
   onSaved: () => void;
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 const SOURCE_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp",
@@ -219,27 +212,27 @@ export function EditableDetailsCard({
           <div className="grid grid-cols-1 gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Case Start Date</span>
-              <span className="text-sm text-foreground">{formatDate(caseStartDate)}</span>
+              <span className="text-sm text-foreground">{formatDateShort(caseStartDate)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Case End Date</span>
-              <span className="text-sm text-foreground">{formatDate(caseEndDate)}</span>
+              <span className="text-sm text-foreground">{formatDateShort(caseEndDate)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">ADS Finishing Date</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-foreground">{formatDate(adsFinishingDate)}</span>
+                <span className="text-sm text-foreground">{formatDateShort(adsFinishingDate)}</span>
                 <AdsBadge adsFinishingDate={adsFinishingDate ?? null} />
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Case Deadline</span>
-              <span className="text-sm text-foreground">{formatDate(caseDeadline)}</span>
+              <span className="text-sm text-foreground">{formatDateShort(caseDeadline)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted">Visa/IRP Expiry Date</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-foreground">{formatDate(visaExpiryDate)}</span>
+                <span className="text-sm text-foreground">{formatDateShort(visaExpiryDate)}</span>
                 {visaExpiryDate && <ExpiryBadge expiryDate={visaExpiryDate} label="Visa Expiry" size="sm" />}
               </div>
             </div>

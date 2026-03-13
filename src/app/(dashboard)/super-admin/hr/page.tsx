@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { formatDateShort } from "@/lib/date-utils";
 
 /* ---------- Types ---------- */
 
@@ -47,13 +48,6 @@ function formatTime(iso: string | null): string {
   });
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function formatHours(h: number | null): string {
   if (h === null || h === undefined) return "—";
@@ -476,10 +470,10 @@ export default function HRDashboardPage() {
                       {req.type.replace(/_/g, " ")}
                     </td>
                     <td className="px-4 py-3 text-muted">
-                      {formatDate(req.startDate)}
+                      {formatDateShort(req.startDate)}
                     </td>
                     <td className="px-4 py-3 text-muted">
-                      {formatDate(req.endDate)}
+                      {formatDateShort(req.endDate)}
                     </td>
                     <td className="max-w-[200px] truncate px-4 py-3 text-muted">
                       {req.reason || "—"}

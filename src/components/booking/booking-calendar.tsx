@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { formatDateISO } from "@/lib/date-utils";
 
 interface BookingUser {
   id: string;
@@ -38,9 +39,6 @@ function getDaysInMonth(year: number, month: number): Date[] {
   return days;
 }
 
-function formatDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -176,7 +174,7 @@ export function BookingCalendar({ currentUserId, userRole }: { currentUserId: st
   // Build calendar grid
   const days = getDaysInMonth(year, month);
   const firstDayOfWeek = (days[0].getDay() + 6) % 7; // Mon=0
-  const todayStr = formatDate(today);
+  const todayStr = formatDateISO(today);
 
   // Group bookings by date
   const bookingsByDate: Record<string, Booking[]> = {};
@@ -252,7 +250,7 @@ export function BookingCalendar({ currentUserId, userRole }: { currentUserId: st
               ))}
 
               {days.map((day) => {
-                const dateStr = formatDate(day);
+                const dateStr = formatDateISO(day);
                 const dayBookings = bookingsByDate[dateStr] || [];
                 const isToday = dateStr === todayStr;
                 const isSelected = dateStr === selectedDate;

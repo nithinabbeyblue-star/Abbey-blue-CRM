@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { LeaveRequestForm } from "./leave-request-form";
+import { formatDateShort } from "@/lib/date-utils";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -87,13 +88,6 @@ function datesOverlap(
   return aStart <= bEnd && aEnd >= bStart;
 }
 
-function formatDateIE(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -429,8 +423,8 @@ export function MyHRPage({ userRole, userId }: MyHRPageProps) {
                   personalLeaves.map((l) => (
                     <tr key={l.id} className="border-b border-border last:border-0 hover:bg-gray-50/50">
                       <td className="px-4 py-2.5">{LEAVE_TYPE_LABELS[l.type] || l.type}</td>
-                      <td className="px-4 py-2.5">{formatDateIE(l.startDate)}</td>
-                      <td className="px-4 py-2.5">{formatDateIE(l.endDate)}</td>
+                      <td className="px-4 py-2.5">{formatDateShort(l.startDate)}</td>
+                      <td className="px-4 py-2.5">{formatDateShort(l.endDate)}</td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[l.status] || "bg-gray-100 text-gray-800"}`}>
                           {STATUS_LABELS[l.status] || l.status}
@@ -574,8 +568,8 @@ export function MyHRPage({ userRole, userId }: MyHRPageProps) {
                           )}
                         </td>
                         <td className="px-4 py-2.5">{LEAVE_TYPE_LABELS[l.type] || l.type}</td>
-                        <td className="px-4 py-2.5">{formatDateIE(l.startDate)}</td>
-                        <td className="px-4 py-2.5">{formatDateIE(l.endDate)}</td>
+                        <td className="px-4 py-2.5">{formatDateShort(l.startDate)}</td>
+                        <td className="px-4 py-2.5">{formatDateShort(l.endDate)}</td>
                         <td className="max-w-[180px] truncate px-4 py-2.5 text-muted">
                           {l.reason || "—"}
                         </td>

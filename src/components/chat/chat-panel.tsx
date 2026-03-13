@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import PusherClient from "pusher-js";
+import { formatDateCompact } from "@/lib/date-utils";
 
 interface ChatMember {
   userId: string;
@@ -276,12 +277,6 @@ export function ChatPanel({
     return `${date} - ${time}`;
   }
 
-  function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-    });
-  }
 
   if (loading) {
     return (
@@ -343,7 +338,7 @@ export function ChatPanel({
         ) : (
           <div className="space-y-3">
             {messages.map((msg) => {
-              const msgDate = formatDate(msg.createdAt);
+              const msgDate = formatDateCompact(msg.createdAt);
               const showDateSep = msgDate !== lastDate;
               lastDate = msgDate;
               const isOwn = msg.sender.id === currentUserId;

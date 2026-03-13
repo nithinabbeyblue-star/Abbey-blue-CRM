@@ -20,10 +20,10 @@ export function calcDue(total: number, paidAmount: number): number {
   return Math.round((total - paidAmount) * 100) / 100;
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency: string = "EUR"): string {
   return new Intl.NumberFormat("en-IE", {
     style: "currency",
-    currency: "EUR",
+    currency,
     minimumFractionDigits: 2,
   }).format(amount);
 }

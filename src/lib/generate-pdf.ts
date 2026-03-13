@@ -1,5 +1,7 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { formatDateLong } from "@/lib/date-utils";
+import { formatCurrency } from "@/constants/finance";
 
 // Extend jsPDF with autotable
 declare module "jspdf" {
@@ -41,22 +43,6 @@ const COMPANY_PHONE = "+353 1 234 5678";
 const NAVY = [15, 23, 42] as const;       // slate-900
 const SLATE = [71, 85, 105] as const;     // slate-500
 const LIGHT_BG = [248, 250, 252] as const; // slate-50
-
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-IE", {
-    style: "currency",
-    currency: currency || "EUR",
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IE", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function formatPaymentType(type: string): string {
   return type
@@ -119,7 +105,7 @@ export function generateInvoice(data: PaymentData): void {
   const rx = pageWidth / 2 + 10;
   doc.text(`Ref: ${data.ticket.refNumber}`, rx, ry);
   ry += 5;
-  doc.text(`Date: ${formatDate(data.createdAt)}`, rx, ry);
+  doc.text(`Date: ${formatDateLong(data.createdAt)}`, rx, ry);
   ry += 5;
   doc.text(`Case: ${data.ticket.caseType.replace(/_/g, " ")}`, rx, ry);
   ry += 5;
@@ -283,7 +269,7 @@ export function generateReceipt(data: PaymentData): void {
       ["Payment Type", formatPaymentType(data.type)],
       ["Amount", formatCurrency(data.amount, data.currency)],
       ["Currency", data.currency],
-      ["Date Paid", data.paidAt ? formatDate(data.paidAt) : "—"],
+      ["Date Paid", data.paidAt ? formatDateLong(data.paidAt) : "—"],
       ["Recorded By", data.recordedBy.name],
       ...(data.stripePaymentIntent
         ? [["Stripe Reference", data.stripePaymentIntent]]
